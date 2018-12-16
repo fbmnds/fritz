@@ -39,7 +39,7 @@ static bool connected = false;
 
 static EventGroupHandle_t wifi_event_group;
 
-static char ip[512];
+static char ip[] = "___.___.___.___";
 
 /* The event group allows multiple bits for each event,
    but we only care about one event - are we connected
@@ -59,10 +59,10 @@ const static char *TAG = "relay";
 #define TLS_SERVER_ACK_1 "HTTP/1.1 200 OK\r\n" \
                          "Content-Type: text/plain\r\n" \
                          "Content-Length: 15\r\n\r\n" \
-                         "_______________" \
+                         "___.___.___.___" \
                          "\r\n"
 
-#define ACK_1_OFFSET 61
+#define ACK_1_OFFSET 65
 
 static void tls_task(void *p)
 {
@@ -76,13 +76,13 @@ static void tls_task(void *p)
     struct sockaddr_in sock_addr;
 
     char recv_buf[TLS_RECV_BUF_LEN];
+    char *temp_buf;
 
     const char send_data[] = TLS_SERVER_ACK;
     const int send_bytes = sizeof(send_data);
 
     char send_data_1[] = TLS_SERVER_ACK_1;
     const int send_bytes_1 = sizeof(send_data_1);
-    char ip[512];
 
     extern const unsigned char cacert_pem_start[] asm("_binary_cacert_pem_start");
     extern const unsigned char cacert_pem_end[]   asm("_binary_cacert_pem_end");
@@ -188,32 +188,39 @@ reconnect:
 
         ESP_LOGI(TAG, "SSL read: %s", recv_buf);
 
-
-        if (strstr(recv_buf, "GET /1/on HTTP/1.1")) {
+        temp_buf = strstr(recv_buf, "GET /1/on HTTP/1.1");
+        if (temp_buf) {
             gpio_set_level(PIN_1, 1);
         }
-        else if (strstr(recv_buf, "GET /1/off HTTP/1.1")) {
+        temp_buf = strstr(recv_buf, "GET /1/off HTTP/1.1");
+        if (temp_buf) {
             gpio_set_level(PIN_1, 0);
         }
 
-        else if (strstr(recv_buf, "GET /2/on HTTP/1.1")) {
+        temp_buf = strstr(recv_buf, "GET /2/on HTTP/1.1");
+        if (temp_buf) {
             gpio_set_level(PIN_2, 1);
         }
-        else if (strstr(recv_buf, "GET /2/off HTTP/1.1")) {
+        temp_buf = strstr(recv_buf, "GET /2/off HTTP/1.1");
+        if (temp_buf) {
             gpio_set_level(PIN_2, 0);
         }
 
-        else if (strstr(recv_buf, "GET /3/on HTTP/1.1")) {;
+        temp_buf = strstr(recv_buf, "GET /3/on HTTP/1.1");
+        if (temp_buf) {;
             gpio_set_level(PIN_3, 1);
         }
-        else if (strstr(recv_buf, "GET /3/off HTTP/1.1")) {
+        temp_buf = strstr(recv_buf, "GET /3/off HTTP/1.1");
+        if (temp_buf) {
             gpio_set_level(PIN_3, 0);
         }
 
-        else if (strstr(recv_buf, "GET /4/on HTTP/1.1")) {;
+        temp_buf = strstr(recv_buf, "GET /4/on HTTP/1.1");
+        if (temp_buf) {
             gpio_set_level(PIN_4, 1);
         }
-        else if (strstr(recv_buf, "GET /4/off HTTP/1.1")) {
+        temp_buf = strstr(recv_buf, "GET /4/off HTTP/1.1");
+        if (temp_buf) {
             gpio_set_level(PIN_4, 0);
         }
 /*
@@ -225,10 +232,13 @@ reconnect:
         }
         break;
 */
-        else if (strstr(recv_buf, "GET /ip HTTP/1.1")) {
+        temp_buf = strstr(recv_buf, "GET /ip HTTP/1.1");
+        if (temp_buf) {
             for (int i=0; i<16; i++) {
-                if ((ip[i] >= '0' && ip[i] <= '9') || ip[i] == '.') {
+                if ((ip[i] >= '0' && ip[i] <= '9') || ip[i] == '.' || ip[i] == '_') {
                     send_data_1[ACK_1_OFFSET+i] = ip[i];
+                } else {
+                    send_data_1[ACK_1_OFFSET+i] = '_';
                 }
             }
             ESP_LOGI(TAG, "IP: %s", send_data_1);
@@ -357,13 +367,12 @@ static void ipify_task(void *pvParameters)
 {
     char buf[512];
     int ret, len;
+    esp_tls_cfg_t cfg = {
+        .cacert_pem_buf  = ipifyorg_pem_start,
+        .cacert_pem_bytes = ipifyorg_pem_end - ipifyorg_pem_start,
+    };
 
     while(1) {
-        esp_tls_cfg_t cfg = {
-            .cacert_pem_buf  = ipifyorg_pem_start,
-            .cacert_pem_bytes = ipifyorg_pem_end - ipifyorg_pem_start,
-        };
-
         if (connected == false) {
             ESP_LOGI("ipify", "not connected");
             goto next;
@@ -417,9 +426,20 @@ static void ipify_task(void *pvParameters)
             len = ret;
             ESP_LOGI("ipify", "%d bytes read", len);
             /* Print response directly to stdout as it is read */
-            for(int i = 0; i < len; i++) {
-                ip[i] = buf[i];
+
+            if (len > 120) {
+                buf[15] = '\0';
+                if  (!strcmp(buf,"HTTP/1.1 200 OK")) {
+                    int j = 0;
+                    for(int i = len - 16; i < len; i++) {
+                        if ((buf[i] >='0' && buf[i] <= '9') || buf[i] == '.') {
+                            ip[j] = buf[i];
+                            j++;
+                        }
+                    }
+                }
             }
+
             ESP_LOGI("ipify", "ip: %s", ip);
 
         } while(1);
@@ -427,7 +447,7 @@ static void ipify_task(void *pvParameters)
     exit:
         esp_tls_conn_delete(tls);
 
-        putchar('\n'); // JSON output doesn't have a newline at end
+        //putchar('\n'); // JSON output doesn't have a newline at end
 
         //static int request_count;
         //ESP_LOGI("ipify", "Completed %d requests", ++request_count);
