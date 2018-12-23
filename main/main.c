@@ -12,7 +12,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "driver/gpio.h"
+#include <driver/gpio.h>
 
 #include "openssl/ssl.h"
 
@@ -34,19 +34,21 @@
 
 #include "esp_tls.h"
 
+#include "secrets/secrets.h"
 
 static bool connected = false;
+static char ip[] = "___.___.___.___";
+#include "ipify/ipify.h"
+
 
 static EventGroupHandle_t wifi_event_group;
-
-static char ip[] = "___.___.___.___";
 
 /* The event group allows multiple bits for each event,
    but we only care about one event - are we connected
    to the AP with an IP? */
 const static int CONNECTED_BIT = BIT0;
 
-const static char *TAG = "relay";
+const static char *TAG = "Relay";
 
 #define PIN_1 GPIO_NUM_12
 #define PIN_2 GPIO_NUM_14
@@ -88,9 +90,9 @@ static void tls_task(void *p)
     extern const unsigned char cacert_pem_end[]   asm("_binary_cacert_pem_end");
     const unsigned int cacert_pem_bytes = cacert_pem_end - cacert_pem_start;
 
-    extern const unsigned char prvtkey_pem_start[] asm("_binary_prvtkey_pem_start");
-    extern const unsigned char prvtkey_pem_end[]   asm("_binary_prvtkey_pem_end");
-    const unsigned int prvtkey_pem_bytes = prvtkey_pem_end - prvtkey_pem_start;
+    extern const unsigned char server_key_start[] asm("_binary_server_key_start");
+    extern const unsigned char server_key_end[]   asm("_binary_server_key_end");
+    const unsigned int server_key_bytes = server_key_end - server_key_start;
 
     ESP_LOGI(TAG, "SSL server context create ......");
     /* For security reasons, it is best if you can use
@@ -113,7 +115,7 @@ static void tls_task(void *p)
     ESP_LOGI(TAG, "OK");
 
     ESP_LOGI(TAG, "SSL server context set private key......");
-    ret = SSL_CTX_use_PrivateKey_ASN1(0, ctx, prvtkey_pem_start, prvtkey_pem_bytes);
+    ret = SSL_CTX_use_PrivateKey_ASN1(0, ctx, server_key_start, server_key_bytes);
     if (!ret) {
         ESP_LOGI(TAG, "failed");
         goto failed2;
@@ -339,123 +341,8 @@ static void wifi_conn_init(void)
     };
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
-    ESP_LOGI(TAG, "start the WIFI SSID:[%s] password:[%s]\n", EXAMPLE_WIFI_SSID, EXAMPLE_WIFI_PASS);
+    ESP_LOGI(TAG, "start the WIFI SSID:[%s] password:[%s]\n", WIFI_SSID, WIFI_PASSW);
     ESP_ERROR_CHECK( esp_wifi_start() );
-}
-
-
-
-
-extern const uint8_t ipifyorg_pem_start[] asm("_binary_ipifyorg_pem_start");
-extern const uint8_t ipifyorg_pem_end[] asm("_binary_ipifyorg_pem_end");
-
-/* Constants that aren't configurable in menuconfig */
-#define WEB_SERVER "api.ipify.org"
-#define WEB_PORT "443"
-#define WEB_URL "https://api.ipify.org"
-
-static const char *REQUEST = "GET / HTTP/1.1\r\n"
-    "Host: "WEB_SERVER"\r\n"
-    "Connection: Close\r\n"
-    "User-Agent: esp-idf/1.0 esp32\r\n"
-"\r\n";
-
-
-
-
-static void ipify_task(void *pvParameters)
-{
-    char buf[512];
-    int ret, len;
-    esp_tls_cfg_t cfg = {
-        .cacert_pem_buf  = ipifyorg_pem_start,
-        .cacert_pem_bytes = ipifyorg_pem_end - ipifyorg_pem_start,
-    };
-
-    while(1) {
-        if (connected == false) {
-            ESP_LOGI("ipify", "not connected");
-            goto next;
-        }
-        struct esp_tls *tls = esp_tls_conn_http_new(WEB_URL, &cfg);
-
-        if(tls != NULL) {
-            ESP_LOGI("ipify", "Connection established...");
-        } else {
-            ESP_LOGE("ipify", "Connection failed...");
-            goto exit;
-        }
-
-        size_t written_bytes = 0;
-        do {
-            ret = esp_tls_conn_write(tls,
-                                     REQUEST + written_bytes,
-                                     strlen(REQUEST) - written_bytes);
-            if (ret >= 0) {
-                ESP_LOGI("ipify", "%d bytes written", ret);
-                written_bytes += ret;
-            } else if (ret != MBEDTLS_ERR_SSL_WANT_READ  && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-                ESP_LOGE("ipify", "esp_tls_conn_write  returned 0x%x", ret);
-                goto exit;
-            }
-        } while(written_bytes < strlen(REQUEST));
-
-        ESP_LOGI("ipify", "Reading HTTP response...");
-
-        do
-        {
-            len = sizeof(buf) - 1;
-            bzero(buf, sizeof(buf));
-            ret = esp_tls_conn_read(tls, (char *)buf, len);
-
-            if(ret == MBEDTLS_ERR_SSL_WANT_WRITE  || ret == MBEDTLS_ERR_SSL_WANT_READ)
-                continue;
-
-            if(ret < 0)
-           {
-                ESP_LOGE("ipify", "esp_tls_conn_read  returned -0x%x", -ret);
-                break;
-            }
-
-            if(ret == 0)
-            {
-                ESP_LOGI("ipify", "connection closed");
-                break;
-            }
-
-            len = ret;
-            ESP_LOGI("ipify", "%d bytes read", len);
-            /* Print response directly to stdout as it is read */
-
-            if (len > 120) {
-                buf[15] = '\0';
-                if  (!strcmp(buf,"HTTP/1.1 200 OK")) {
-                    int j = 0;
-                    for(int i = len - 16; i < len; i++) {
-                        if ((buf[i] >='0' && buf[i] <= '9') || buf[i] == '.') {
-                            ip[j] = buf[i];
-                            j++;
-                        }
-                    }
-                }
-            }
-
-            ESP_LOGI("ipify", "ip: %s", ip);
-
-        } while(1);
-
-    exit:
-        esp_tls_conn_delete(tls);
-
-        //putchar('\n'); // JSON output doesn't have a newline at end
-
-        //static int request_count;
-        //ESP_LOGI("ipify", "Completed %d requests", ++request_count);
-
-    next:
-        vTaskDelay((3*60*1000) / portTICK_PERIOD_MS);
-
-    }
 }
 
 
