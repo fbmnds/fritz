@@ -39,7 +39,7 @@
 static bool connected = false;
 static char ip[] = "___.___.___.___";
 #include "ipify/ipify.h"
-
+#include "telegram/telegram.h"
 
 static EventGroupHandle_t wifi_event_group;
 
@@ -253,6 +253,9 @@ reconnect:
         } else {
             ESP_LOGI(TAG, "error");
         }
+
+        taskYIELD();
+
         break;
 /*
         ret = SSL_write(ssl, send_data, send_bytes);
@@ -335,14 +338,17 @@ static void wifi_conn_init(void)
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = EXAMPLE_WIFI_SSID,
-            .password = EXAMPLE_WIFI_PASS,
+            .ssid     = WIFI_SSID,
+            .password = WIFI_PASSW,
         },
     };
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
-    ESP_LOGI(TAG, "start the WIFI SSID:[%s] password:[%s]\n", WIFI_SSID, WIFI_PASSW);
-    ESP_ERROR_CHECK( esp_wifi_start() );
+    ESP_LOGI(TAG, "try start the WIFI SSID:[%s] password:[%s]\n", WIFI_SSID, WIFI_PASSW);
+    while (! esp_wifi_start()) {
+        ;
+    }
+    ESP_LOGI(TAG, "WIFI connected");
 }
 
 
@@ -373,5 +379,6 @@ void app_main(void)
     vTaskStartScheduler();
 
     xTaskCreate(&ipify_task, "ipify_task", 8192, NULL, 5, NULL);
+    xTaskCreate(&telegram_task, "telegram_task", 8192, NULL, 5, NULL);
 
 }
