@@ -16,11 +16,11 @@ extern const uint8_t telegram_pem_start[] asm("_binary_telegram_pem_start");
 extern const uint8_t telegram_pem_end[] asm("_binary_telegram_pem_end");
 
 /* Constants that aren't configurable in menuconfig */
-#define TELEGRAM_SERVER "api.telegram.org"
-#define TELEGRAM_PORT   "443"
-#define TELEGRAM_URL    "/bot"BOT_TOKEN"/sendMessage?chat_id="BOT_ID"&text="
-#define TELEGRAM_TAG    "telegram"
-
+#define TELEGRAM_SERVER   "api.telegram.org"
+#define TELEGRAM_PORT     "443"
+#define TELEGRAM_URL      "/bot"BOT_TOKEN"/sendMessage?chat_id="BOT_ID"&text="
+#define TELEGRAM_TAG      "telegram"
+#define TELEGRAM_PRIORITY TLS_TASK_PRIORITY+1
 
 static const char *T_REQUEST = "GET "TELEGRAM_URL"%s HTTP/1.1\r\n"
     "Host: "TELEGRAM_SERVER"\r\n"
@@ -116,7 +116,7 @@ static void telegram_task(void *pvParameters)
         esp_tls_conn_delete(tls);
     loop2:
         vTaskDelay((60*60*1000) / portTICK_PERIOD_MS);
-        break;
+        continue;
 
     retry:
         vTaskDelay((5*1000) / portTICK_PERIOD_MS);

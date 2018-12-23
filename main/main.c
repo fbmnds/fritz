@@ -7,6 +7,7 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 
+#include "sdkconfig.h"
 #include "openssl_server.h"
 
 #include <string.h>
@@ -48,7 +49,7 @@ static EventGroupHandle_t wifi_event_group;
    to the AP with an IP? */
 const static int CONNECTED_BIT = BIT0;
 
-const static char *TAG = "Relay";
+const static char *TAG = "relay";
 
 #define PIN_1 GPIO_NUM_12
 #define PIN_2 GPIO_NUM_14
@@ -172,6 +173,7 @@ reconnect:
     connected = true;
 
     ESP_LOGI(TAG, "SSL server accept client ......");
+    taskYIELD();
     ret = SSL_accept(ssl);
     if (!ret) {
         ESP_LOGI(TAG, "failed");
@@ -254,7 +256,7 @@ reconnect:
             ESP_LOGI(TAG, "error");
         }
 
-        taskYIELD();
+        vTaskDelay((500) / portTICK_PERIOD_MS);
 
         break;
 /*
@@ -276,6 +278,7 @@ failed4:
     SSL_free(ssl);
     ssl = NULL;
     taskYIELD();
+    //vTaskDelay((500) / portTICK_PERIOD_MS);
     goto reconnect;
 failed3:
     close(sockfd);
@@ -345,8 +348,9 @@ static void wifi_conn_init(void)
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
     ESP_LOGI(TAG, "try start the WIFI SSID:[%s] password:[%s]\n", WIFI_SSID, WIFI_PASSW);
+
     while (! esp_wifi_start()) {
-        ;
+        vTaskDelay((3*1000) / portTICK_PERIOD_MS);
     }
     ESP_LOGI(TAG, "WIFI connected");
 }
@@ -378,7 +382,7 @@ void app_main(void)
 
     vTaskStartScheduler();
 
-    xTaskCreate(&ipify_task, "ipify_task", 8192, NULL, 5, NULL);
-    xTaskCreate(&telegram_task, "telegram_task", 8192, NULL, 5, NULL);
+    xTaskCreate(&ipify_task, "ipify_task", 8192, NULL, IPIFY_PRIORITY, NULL);
+    xTaskCreate(&telegram_task, "telegram_task", 8192, NULL, TELEGRAM_PRIORITY, NULL);
 
 }

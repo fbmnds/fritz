@@ -11,10 +11,11 @@ extern const uint8_t ipifyorg_pem_start[] asm("_binary_ipifyorg_pem_start");
 extern const uint8_t ipifyorg_pem_end[] asm("_binary_ipifyorg_pem_end");
 
 /* Constants that aren't configurable in menuconfig */
-#define IPIFY_SERVER "api.ipify.org"
-#define IPIFY_PORT   "443"
-#define IPIFY_URL    "https://api.ipify.org"
-
+#define IPIFY_SERVER   "api.ipify.org"
+#define IPIFY_PORT     "443"
+#define IPIFY_URL      "https://api.ipify.org"
+#define IPIFY_PRIORITY TLS_TASK_PRIORITY+2
+#define IPIFY_TAG       "ipify"
 
 static const char *REQUEST = "GET / HTTP/1.1\r\n"
     "Host: "IPIFY_SERVER"\r\n"
@@ -34,15 +35,15 @@ static void ipify_task(void *pvParameters)
 
     while(1) {
         if (connected == false) {
-            ESP_LOGI("ipify", "not connected");
+            ESP_LOGI(IPIFY_TAG, "not connected");
             goto retry;
         }
         struct esp_tls *tls = esp_tls_conn_http_new(IPIFY_URL, &cfg);
 
         if(tls != NULL) {
-            ESP_LOGI("ipify", "Connection established...");
+            ESP_LOGI(IPIFY_TAG, "Connection established...");
         } else {
-            ESP_LOGE("ipify", "Connection failed...");
+            ESP_LOGE(IPIFY_TAG, "Connection failed...");
             goto loop;
         }
 
@@ -52,15 +53,15 @@ static void ipify_task(void *pvParameters)
                                      REQUEST + written_bytes,
                                      strlen(REQUEST) - written_bytes);
             if (ret >= 0) {
-                ESP_LOGI("ipify", "%d bytes written", ret);
+                ESP_LOGI(IPIFY_TAG, "%d bytes written", ret);
                 written_bytes += ret;
             } else if (ret != MBEDTLS_ERR_SSL_WANT_READ  && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-                ESP_LOGE("ipify", "esp_tls_conn_write  returned 0x%x", ret);
+                ESP_LOGE(IPIFY_TAG, "esp_tls_conn_write  returned 0x%x", ret);
                 goto loop;
             }
         } while(written_bytes < strlen(REQUEST));
 
-        ESP_LOGI("ipify", "Reading HTTP response...");
+        ESP_LOGI(IPIFY_TAG, "Reading HTTP response...");
 
         do
         {
@@ -73,18 +74,18 @@ static void ipify_task(void *pvParameters)
 
             if(ret < 0)
            {
-                ESP_LOGE("ipify", "esp_tls_conn_read  returned -0x%x", -ret);
+                ESP_LOGE(IPIFY_TAG, "esp_tls_conn_read  returned -0x%x", -ret);
                 break;
             }
 
             if(ret == 0)
             {
-                ESP_LOGI("ipify", "connection closed");
+                ESP_LOGI(IPIFY_TAG, "connection closed");
                 break;
             }
 
             len = ret;
-            ESP_LOGI("ipify", "%d bytes read", len);
+            ESP_LOGI(IPIFY_TAG, "%d bytes read", len);
             /* Print response directly to stdout as it is read */
 
             if (len > 120) {
@@ -100,19 +101,15 @@ static void ipify_task(void *pvParameters)
                 }
             }
 
-            ESP_LOGI("ipify", "ip: %s", ip);
+            ESP_LOGI(IPIFY_TAG, "ip: %s", ip);
 
         } while(1);
 
     loop:
         esp_tls_conn_delete(tls);
 
-        //putchar('\n'); // JSON output doesn't have a newline at end
-
-        //static int request_count;
-        //ESP_LOGI("ipify", "Completed %d requests", ++request_count);
         vTaskDelay((60*60*1000) / portTICK_PERIOD_MS);
-        break;
+        continue;
 
     retry:
         vTaskDelay((5*1000) / portTICK_PERIOD_MS);
