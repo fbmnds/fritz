@@ -32,7 +32,7 @@ static void ipify_task(void *pvParameters)
         .cacert_pem_buf  = ipifyorg_pem_start,
         .cacert_pem_bytes = ipifyorg_pem_end - ipifyorg_pem_start,
     };
-
+    ESP_LOGI(IPIFY_TAG, "init");
     while(1) {
         if (connected == false) {
             ESP_LOGI(IPIFY_TAG, "not connected");

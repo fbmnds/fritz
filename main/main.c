@@ -42,6 +42,9 @@ static char ip[] = "___.___.___.___";
 #include "ipify/ipify.h"
 #include "telegram/telegram.h"
 
+
+static bool ipify_created = false;
+static bool telegram_created = false;
 static EventGroupHandle_t wifi_event_group;
 
 /* The event group allows multiple bits for each event,
@@ -81,8 +84,8 @@ static void tls_task(void *p)
     char recv_buf[TLS_RECV_BUF_LEN];
     char *temp_buf;
 
-    const char send_data[] = TLS_SERVER_ACK;
-    const int send_bytes = sizeof(send_data);
+    //const char send_data[] = TLS_SERVER_ACK;
+    //const int send_bytes = sizeof(send_data);
 
     char send_data_1[] = TLS_SERVER_ACK_1;
     const int send_bytes_1 = sizeof(send_data_1);
@@ -160,6 +163,8 @@ reconnect:
     }
     ESP_LOGI(TAG, "OK");
 
+    connected = true;
+
     ESP_LOGI(TAG, "SSL server socket accept client ......");
     new_sockfd = accept(sockfd, (struct sockaddr *)&sock_addr, &addr_len);
     if (new_sockfd < 0) {
@@ -170,10 +175,6 @@ reconnect:
 
     SSL_set_fd(ssl, new_sockfd);
 
-    connected = true;
-
-    ESP_LOGI(TAG, "SSL server accept client ......");
-    taskYIELD();
     ret = SSL_accept(ssl);
     if (!ret) {
         ESP_LOGI(TAG, "failed");
@@ -256,8 +257,6 @@ reconnect:
             ESP_LOGI(TAG, "error");
         }
 
-        vTaskDelay((500) / portTICK_PERIOD_MS);
-
         break;
 /*
         ret = SSL_write(ssl, send_data, send_bytes);
@@ -277,8 +276,7 @@ failed5:
 failed4:
     SSL_free(ssl);
     ssl = NULL;
-    taskYIELD();
-    //vTaskDelay((500) / portTICK_PERIOD_MS);
+    vTaskDelay((150) / portTICK_PERIOD_MS);
     goto reconnect;
 failed3:
     close(sockfd);
@@ -288,6 +286,7 @@ failed2:
     ctx = NULL;
 failed1:
     vTaskDelete(NULL);
+    ESP_LOGE(TAG, "task deleted");
     return ;
 }
 
@@ -312,9 +311,17 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 {
     switch(event->event_id) {
     case SYSTEM_EVENT_STA_START:
+        if (!ipify_created) {
+            xTaskCreate(&ipify_task, "ipify_task", 8192, NULL, IPIFY_PRIORITY, NULL);
+            ipify_created = true;
+        }
         esp_wifi_connect();
         break;
     case SYSTEM_EVENT_STA_GOT_IP:
+        if (!telegram_created) {
+            xTaskCreate(&telegram_task, "telegram_task", 8192, NULL, TELEGRAM_PRIORITY, NULL);
+            telegram_created = true;
+        }
         xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
         openssl_server_init();
         break;
@@ -381,8 +388,4 @@ void app_main(void)
     wifi_conn_init();
 
     vTaskStartScheduler();
-
-    xTaskCreate(&ipify_task, "ipify_task", 8192, NULL, IPIFY_PRIORITY, NULL);
-    xTaskCreate(&telegram_task, "telegram_task", 8192, NULL, TELEGRAM_PRIORITY, NULL);
-
 }

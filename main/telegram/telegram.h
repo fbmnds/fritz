@@ -5,6 +5,7 @@
 
 
 #include "freertos/FreeRTOS.h"
+#include "stdio.h"
 
 #include "../secrets/secrets.h"
 
@@ -18,15 +19,17 @@ extern const uint8_t telegram_pem_end[] asm("_binary_telegram_pem_end");
 /* Constants that aren't configurable in menuconfig */
 #define TELEGRAM_SERVER   "api.telegram.org"
 #define TELEGRAM_PORT     "443"
-#define TELEGRAM_URL      "/bot"BOT_TOKEN"/sendMessage?chat_id="BOT_ID"&text="
+#define TELEGRAM_URL      "/bot"BOT_TOKEN"/sendMessage?chat_id="BOT_ID
 #define TELEGRAM_TAG      "telegram"
 #define TELEGRAM_PRIORITY TLS_TASK_PRIORITY+1
 
-static const char *T_REQUEST = "GET "TELEGRAM_URL"%s HTTP/1.1\r\n"
+static const char *T_REQUEST = "POST "TELEGRAM_URL" HTTP/1.1\r\n"
     "Host: "TELEGRAM_SERVER"\r\n"
-    "Connection: Close\r\n"
     "User-Agent: esp-idf/1.0 esp32\r\n"
-"\r\n";
+    "Accept: */*\r\n"
+    "Content-Length: 20\r\n"
+    "Content-Type: application/x-www-form-urlencodedr\n\r\n"
+    "text=%s";
 
 static void telegram_task(void *pvParameters)
 {
@@ -35,10 +38,13 @@ static void telegram_task(void *pvParameters)
     int request_len;
     char buf[512];
     int ret, len;
-    esp_tls_cfg_t cfg = {
+    const esp_tls_cfg_t cfg = {
+        /*
         .cacert_pem_buf   = telegram_pem_start,
-        .cacert_pem_bytes = telegram_pem_end - telegram_pem_start,
+        .cacert_pem_bytes = telegram_pem_end - telegram_pem_start
+        */
     };
+    ESP_LOGI(TELEGRAM_TAG, "init");
 
     while(1) {
         temp_buf = strstr(ip, "___.___.___.___");
@@ -57,7 +63,8 @@ static void telegram_task(void *pvParameters)
             ESP_LOGI(TELEGRAM_TAG, "not connected");
             goto retry;
         }
-        sprintf(request, "%s%s", TELEGRAM_URL, ip);
+        sprintf(request, "https://%s%s", TELEGRAM_SERVER, TELEGRAM_URL);
+        ESP_LOGI(TELEGRAM_TAG, "requested url: %s", request);
         struct esp_tls *tls = esp_tls_conn_http_new(request, &cfg);
 
         if(tls != NULL) {
@@ -109,6 +116,7 @@ static void telegram_task(void *pvParameters)
 
             len = ret;
             ESP_LOGI(TELEGRAM_TAG, "%d bytes read", len);
+            ESP_LOGI(TELEGRAM_TAG, "%s", buf);
 
         } while(1);
 
