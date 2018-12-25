@@ -65,17 +65,35 @@ const static char *TAG = "relay";
 #define PIN_3 GPIO_NUM_27
 #define PIN_4 GPIO_NUM_26
 
-
 #define TLS_SERVER_ACK     "HTTP/1.1 200 OK\r\n"
 #define TLS_SERVER_ACK_LEN 17
 
 #define TLS_SERVER_ACK_1 "HTTP/1.1 200 OK\r\n" \
                          "Connection: close\r\n" \
-                         "Content-Type: text/html\r\n" \
+                         "Content-Type: %s\r\n" \
                          "Content-Length: %d\r\n\r\n" \
                          "%s" \
                          "\r\n"
-#define TLS_SERVER_ACK_1_BUFLEN 6000
+#define TLS_SERVER_ACK_1_BUFLEN 6200
+static const char text_html[] = "text/html";
+static const char app_json[]  = "application/json";
+
+typedef struct pin_state {
+    int fun_p64;
+    int zen;
+    int store;
+    int eth;
+} pin_state_t;
+
+pin_state_t pin_state = {
+    .fun_p64 = 0,
+    .zen     = 0,
+    .store   = 0,
+    .eth = 0,
+};
+
+#define TLS_SERVER_ACK_1_STATE "{ \"fun_p64\": %d, \"zen\": %d, \"store\": %d, \"eth\": %d }"
+#define TLS_SERVER_ACK_1_STATELEN 61
 
 static void tls_task(void *p)
 {
@@ -203,49 +221,52 @@ reconnect:
     temp_buf = strstr(recv_buf, "/1/on HTTP/1.1");
     if (temp_buf) {
         gpio_set_level(PIN_1, 1);
+        pin_state.fun_p64 = 1;
         goto _200;
     }
     temp_buf = strstr(recv_buf, "/1/off HTTP/1.1");
     if (temp_buf) {
         gpio_set_level(PIN_1, 0);
+        pin_state.fun_p64 = 0;
         goto _200;
     }
 
     temp_buf = strstr(recv_buf, "/2/on HTTP/1.1");
     if (temp_buf) {
         gpio_set_level(PIN_2, 1);
+        pin_state.store = 1;
         goto _200;
     }
     temp_buf = strstr(recv_buf, "/2/off HTTP/1.1");
     if (temp_buf) {
         gpio_set_level(PIN_2, 0);
+        pin_state.store = 0;
         goto _200;
     }
 
     temp_buf = strstr(recv_buf, "/3/on HTTP/1.1");
     if (temp_buf) {;
         gpio_set_level(PIN_3, 1);
+        pin_state.zen = 1;
         goto _200;
     }
     temp_buf = strstr(recv_buf, "/3/off HTTP/1.1");
     if (temp_buf) {
         gpio_set_level(PIN_3, 0);
+        pin_state.zen = 0;
         goto _200;
     }
 
     temp_buf = strstr(recv_buf, "/4/on HTTP/1.1");
     if (temp_buf) {
         gpio_set_level(PIN_4, 1);
+        pin_state.eth = 1;
         goto _200;
     }
     temp_buf = strstr(recv_buf, "/4/off HTTP/1.1");
     if (temp_buf) {
         gpio_set_level(PIN_4, 0);
-        goto _200;
-    }
-
-    temp_buf = strstr(recv_buf, "/favicon.ico HTTP/1.1");
-    if (temp_buf) {
+        pin_state.eth = 0;
         goto _200;
     }
 
@@ -264,7 +285,10 @@ index:
     temp_buf = strstr(recv_buf, "/index.html HTTP/1.1");
     if (temp_buf) {
         memset(index_buf, 0, TLS_SERVER_ACK_1_BUFLEN);
-        sprintf(index_buf, TLS_SERVER_ACK_1, main_html_index_html_len, main_html_index_html);
+        sprintf(index_buf, TLS_SERVER_ACK_1,
+                           text_html,
+                           main_html_index_html_len,
+                           main_html_index_html);
         ret = SSL_write(ssl, index_buf, strlen(index_buf));
         ESP_LOGI(TAG, "index_buf\n%s", index_buf);
         if (ret > 0) {
@@ -272,7 +296,29 @@ index:
         } else {
             ESP_LOGI(TAG, "error");
         }
-    } // else ignore request
+        goto done;
+    }
+
+    temp_buf = strstr(recv_buf, "/status HTTP/1.1");
+    if (temp_buf) {
+        memset(recv_buf, 0, TLS_RECV_BUF_LEN);
+        sprintf(recv_buf, TLS_SERVER_ACK_1_STATE,
+                          pin_state.fun_p64, pin_state.zen,
+                          pin_state.store, pin_state.eth);
+        memset(index_buf, 0, TLS_SERVER_ACK_1_BUFLEN);
+        sprintf(index_buf, TLS_SERVER_ACK_1,
+                           app_json,
+                           TLS_SERVER_ACK_1_STATELEN,
+                           recv_buf);
+        ret = SSL_write(ssl, index_buf, strlen(index_buf));
+        ESP_LOGI(TAG, "index_buf\n%s", index_buf);
+        if (ret > 0) {
+            ESP_LOGI(TAG, "OK");
+        } else {
+            ESP_LOGI(TAG, "error");
+        }
+    }
+    // else drop request
 
 done:
     SSL_shutdown(ssl);

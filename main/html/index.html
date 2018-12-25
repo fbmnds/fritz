@@ -5,6 +5,7 @@
 
 
 <head>
+    <meta charset="utf-8"/>
     <style>
 
 .fh-switch {
@@ -84,10 +85,20 @@
 
     <script type="text/javascript">
         function onload() {
-            document.getElementById('fun-p64').value = 0;
-            document.getElementById('zen').value = 0;
-            document.getElementById('store').value = 0;
-            document.getElementById('eth').value = 0;
+            var url = document.URL;
+            url = url.substring(0, url.indexOf("/index.html"));
+            url += "/status";
+            var req = new HttpRequest(url);
+            req.responseType = 'json';
+            req.open('GET', url, false);
+            var json = req.response;
+            alert(json);
+            document.getElementById('fun-p64').value = json.fun_p64;
+            document.getElementById('zen').value     = json.zen;
+            document.getElementById('store').value   = json.store;
+            document.getElementById('eth').value     = json.eth;
+            req.send(null);
+
         };
         function toggle(x = 'undefined') {
             var p = new XMLHttpRequest();
@@ -133,7 +144,7 @@
 
 <body onload="onload();">
 
-    <h3>Control</h3>
+    <h3>Controls</h3>
 
     <div>
         <span class="fh-switch">
