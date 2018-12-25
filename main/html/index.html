@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
-<head>
-<style>
 
+<head>
+    <style>
 
 .fh-switch {
   position: relative; }
@@ -72,91 +72,96 @@
   right: 25px;
   background-color: #849fbb; }
 
+    </style>
 
-</style>
+    <script type="text/javascript">
+        function onload() {
+            document.getElementById('fun-p64').value = 0;
+            document.getElementById('zen').value = 0;
+            document.getElementById('store').value = 0;
+            document.getElementById('eth').value = 0;
+        };
+        function toggle(x = 'undefined') {
+            var p = new XMLHttpRequest();
+            var url = document.URL;
+            url = url.substring(0, url.indexOf("/index.html"));
+            if (x == 'fun-p64') {
+                url += "/1";
+            } else if (x == 'zen') {
+                url += "/3";
+            } else if (x == 'store') {
+                url += "/2";
+            } else if (x == 'eth') {
+                url += "/4";
+            } else { return -1; }
+            if (document.getElementById(x).value == 0) {
+                url += "/on";
+//                alert(url + "\n>" + p.responseText + "<");
+                document.getElementById(x).value = 1;
+            } else {
+                url += "/off";
+//                alert(url + "\n>" + p.responseText + "<");
+                document.getElementById(x).value = 0;
+            }
+            p.open("GET", url);
+            p.send(null);
+            while(!p.DONE) {
+                ;
+            }
 
-<script type="text/javascript">
-    function onload() {
-        document.getElementById('switch-id-1').value = 0;
-        document.getElementById('switch-id-2').value = 0;
-        document.getElementById('switch-id-3').value = 0;
-        document.getElementById('switch-id-4').value = 0;
-    };
-    function toggle(x='undefined') {
-        var p = new XMLHttpRequest();
-        var url = document.URL;
-        url = url.substring( 0, url.indexOf( "/index.html" ) );
-        if (x == 'switch-id-1') {
-            url += "/1";
-        } else if (x == 'switch-id-2') {
-            url += "/2";
-        } else if (x == 'switch-id-3') {
-            url += "/3";
-        } else if (x == 'switch-id-4') {
-            url += "/4";
-        } else { return -1; }
-        if (document.getElementById(x).value == 0) {
-            url += "/on";
-            alert(url + "\n>" + p.responseText + "<");
-            document.getElementById(x).value = 1;
-        } else {
-            url += "/off";
-            alert(url + "\n>" + p.responseText + "<");
-            document.getElementById(x).value = 0;
-        }
-        p.open("GET", url);
-        p.send(null);
-        return 0;
-    };
-    function kk(x='undefined'){
-        toggle(x);
-    };
-    function kk_1(){ kk('switch-id-1'); };
-    function kk_2(){ kk('switch-id-2'); };
-    function kk_3(){ kk('switch-id-3'); };
-    function kk_4(){ kk('switch-id-4'); };
-</script>
+            return 0;
+        };
+        function kk(x = 'undefined') {
+            toggle(x);
+        };
+        function kk_1() { kk('fun-p64'); };
+        function kk_2() { kk('zen'); };
+        function kk_3() { kk('store'); };
+        function kk_4() { kk('eth'); };
+    </script>
 
 
 </head>
+
 <body onload="onload();">
 
-<h3>Relay Control</h3>
+    <h3>Control</h3>
 
-<div>
-<span class="fh-switch">
-   <input type="checkbox" id="switch-id-1" name="sw-1" onclick="kk_1();">
-   <label for="switch-id-1">fun & p64</label>
-   <span class="fh-switch-knob"></span>
-</span>
-</div>
-
-
-<div>
-<span class="fh-switch">
-   <input type="checkbox" id="switch-id-2" name="sw-2" onclick="kk_2();">
-   <label for="switch-id-2">zen</label>
-   <span class="fh-switch-knob"></span>
-</span>
-</div>
+    <div>
+        <span class="fh-switch">
+            <input type="checkbox" id="fun-p64" name="sw-1" onclick="kk_1();">
+            <label for="fun-p64">fun & p64</label>
+            <span class="fh-switch-knob"></span>
+        </span>
+    </div>
 
 
-<div>
-<span class="fh-switch">
-   <input type="checkbox" id="switch-id-3" name="sw-3" onclick="kk_3();">
-   <label for="switch-id-3">store</label>
-   <span class="fh-switch-knob"></span>
-</span>
-</div>
+    <div>
+        <span class="fh-switch">
+            <input type="checkbox" id="zen" name="sw-2" onclick="kk_2();">
+            <label for="zen">zen</label>
+            <span class="fh-switch-knob"></span>
+        </span>
+    </div>
 
 
-<div>
-<span class="fh-switch">
-   <input type="checkbox" id="switch-id-4" name="sw-4" onclick="kk_4();">
-   <label for="switch-id-4">eth</label>
-   <span class="fh-switch-knob"></span>
-</span>
-</div>
+    <div>
+        <span class="fh-switch">
+            <input type="checkbox" id="store" name="sw-3" onclick="kk_3();">
+            <label for="store">store</label>
+            <span class="fh-switch-knob"></span>
+        </span>
+    </div>
+
+
+    <div>
+        <span class="fh-switch">
+            <input type="checkbox" id="eth" name="sw-4" onclick="kk_4();">
+            <label for="eth">eth</label>
+            <span class="fh-switch-knob"></span>
+        </span>
+    </div>
 
 </body>
+
 </html>

@@ -5,5 +5,6 @@
 
 PROJECT_NAME := openssl_server
 
-include $(IDF_PATH)/make/project.mk
 
+include $(IDF_PATH)/make/project.mk
+include main/html/html.mk

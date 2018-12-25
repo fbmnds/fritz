@@ -37,6 +37,12 @@
 
 #include "secrets/secrets.h"
 
+#ifndef _HTML_INDEX_H_
+#define _HTML_INDEX_H_
+#include "html/index.h"
+#endif
+
+
 static bool connected = false;
 static char ip[] = "___.___.___.___";
 #include "ipify/ipify.h"
@@ -60,15 +66,16 @@ const static char *TAG = "relay";
 #define PIN_4 GPIO_NUM_26
 
 
-#define TLS_SERVER_ACK "HTTP/1.1 200 OK\r\n"
+#define TLS_SERVER_ACK     "HTTP/1.1 200 OK\r\n"
+#define TLS_SERVER_ACK_LEN 17
 
 #define TLS_SERVER_ACK_1 "HTTP/1.1 200 OK\r\n" \
-                         "Content-Type: text/plain\r\n" \
-                         "Content-Length: 15\r\n\r\n" \
-                         "___.___.___.___" \
+                         "Connection: close\r\n" \
+                         "Content-Type: text/html\r\n" \
+                         "Content-Length: %d\r\n\r\n" \
+                         "%s" \
                          "\r\n"
-
-#define ACK_1_OFFSET 65
+#define TLS_SERVER_ACK_1_BUFLEN 6000
 
 static void tls_task(void *p)
 {
@@ -81,14 +88,9 @@ static void tls_task(void *p)
     socklen_t addr_len;
     struct sockaddr_in sock_addr;
 
-    char recv_buf[TLS_RECV_BUF_LEN];
+    static char recv_buf[TLS_RECV_BUF_LEN];
     char *temp_buf;
-
-    //const char send_data[] = TLS_SERVER_ACK;
-    //const int send_bytes = sizeof(send_data);
-
-    char send_data_1[] = TLS_SERVER_ACK_1;
-    const int send_bytes_1 = sizeof(send_data_1);
+    static char index_buf[TLS_SERVER_ACK_1_BUFLEN];
 
     extern const unsigned char cacert_pem_start[] asm("_binary_cacert_pem_start");
     extern const unsigned char cacert_pem_end[]   asm("_binary_cacert_pem_end");
@@ -97,6 +99,8 @@ static void tls_task(void *p)
     extern const unsigned char server_key_start[] asm("_binary_server_key_start");
     extern const unsigned char server_key_end[]   asm("_binary_server_key_end");
     const unsigned int server_key_bytes = server_key_end - server_key_start;
+
+    assert(main_html_index_html_len + strlen(TLS_SERVER_ACK_1) + 5 <= TLS_SERVER_ACK_1_BUFLEN);
 
     ESP_LOGI(TAG, "SSL server context create ......");
     /* For security reasons, it is best if you can use
@@ -182,93 +186,95 @@ reconnect:
     }
     ESP_LOGI(TAG, "OK");
 
-
     ESP_LOGI(TAG, "SSL server read message ......");
-    do {
-        memset(recv_buf, 0, TLS_RECV_BUF_LEN);
-        ret = SSL_read(ssl, recv_buf, TLS_RECV_BUF_LEN - 1);
-        if (ret <= 0) {
-            break;
-        }
 
-        ESP_LOGI(TAG, "SSL read: %s", recv_buf);
+    memset(recv_buf, 0, TLS_RECV_BUF_LEN);
+    ret = SSL_read(ssl, recv_buf, TLS_RECV_BUF_LEN - 1);
 
-        temp_buf = strstr(recv_buf, "GET /1/on HTTP/1.1");
-        if (temp_buf) {
-            gpio_set_level(PIN_1, 1);
-        }
-        temp_buf = strstr(recv_buf, "GET /1/off HTTP/1.1");
-        if (temp_buf) {
-            gpio_set_level(PIN_1, 0);
-        }
+    ESP_LOGI(TAG, "SSL read: ret = %d\n%s", ret, recv_buf);
 
-        temp_buf = strstr(recv_buf, "GET /2/on HTTP/1.1");
-        if (temp_buf) {
-            gpio_set_level(PIN_2, 1);
-        }
-        temp_buf = strstr(recv_buf, "GET /2/off HTTP/1.1");
-        if (temp_buf) {
-            gpio_set_level(PIN_2, 0);
-        }
+    temp_buf = strstr(recv_buf, API_KEY);
+    if (!temp_buf) {
+        ESP_LOGI(TAG, "SSL read: ignore request");
+        goto done;
+    }
+    temp_buf = NULL;
 
-        temp_buf = strstr(recv_buf, "GET /3/on HTTP/1.1");
-        if (temp_buf) {;
-            gpio_set_level(PIN_3, 1);
-        }
-        temp_buf = strstr(recv_buf, "GET /3/off HTTP/1.1");
-        if (temp_buf) {
-            gpio_set_level(PIN_3, 0);
-        }
+    temp_buf = strstr(recv_buf, "/1/on HTTP/1.1");
+    if (temp_buf) {
+        gpio_set_level(PIN_1, 1);
+        goto _200;
+    }
+    temp_buf = strstr(recv_buf, "/1/off HTTP/1.1");
+    if (temp_buf) {
+        gpio_set_level(PIN_1, 0);
+        goto _200;
+    }
 
-        temp_buf = strstr(recv_buf, "GET /4/on HTTP/1.1");
-        if (temp_buf) {
-            gpio_set_level(PIN_4, 1);
-        }
-        temp_buf = strstr(recv_buf, "GET /4/off HTTP/1.1");
-        if (temp_buf) {
-            gpio_set_level(PIN_4, 0);
-        }
-/*
-        ret = SSL_write(ssl, send_data, send_bytes);
+    temp_buf = strstr(recv_buf, "/2/on HTTP/1.1");
+    if (temp_buf) {
+        gpio_set_level(PIN_2, 1);
+        goto _200;
+    }
+    temp_buf = strstr(recv_buf, "/2/off HTTP/1.1");
+    if (temp_buf) {
+        gpio_set_level(PIN_2, 0);
+        goto _200;
+    }
+
+    temp_buf = strstr(recv_buf, "/3/on HTTP/1.1");
+    if (temp_buf) {;
+        gpio_set_level(PIN_3, 1);
+        goto _200;
+    }
+    temp_buf = strstr(recv_buf, "/3/off HTTP/1.1");
+    if (temp_buf) {
+        gpio_set_level(PIN_3, 0);
+        goto _200;
+    }
+
+    temp_buf = strstr(recv_buf, "/4/on HTTP/1.1");
+    if (temp_buf) {
+        gpio_set_level(PIN_4, 1);
+        goto _200;
+    }
+    temp_buf = strstr(recv_buf, "/4/off HTTP/1.1");
+    if (temp_buf) {
+        gpio_set_level(PIN_4, 0);
+        goto _200;
+    }
+
+    temp_buf = strstr(recv_buf, "/favicon.ico HTTP/1.1");
+    if (temp_buf) {
+        goto _200;
+    }
+
+    goto index;
+
+_200:
+    ret = SSL_write(ssl, TLS_SERVER_ACK, TLS_SERVER_ACK_LEN);
+    if (ret > 0) {
+        ESP_LOGI(TAG, "OK");
+    } else {
+        ESP_LOGI(TAG, "error");
+    }
+    goto done;
+
+index:
+    temp_buf = strstr(recv_buf, "/index.html HTTP/1.1");
+    if (temp_buf) {
+        memset(index_buf, 0, TLS_SERVER_ACK_1_BUFLEN);
+        sprintf(index_buf, TLS_SERVER_ACK_1, main_html_index_html_len, main_html_index_html);
+        ret = SSL_write(ssl, index_buf, strlen(index_buf));
+        ESP_LOGI(TAG, "index_buf\n%s", index_buf);
         if (ret > 0) {
             ESP_LOGI(TAG, "OK");
         } else {
             ESP_LOGI(TAG, "error");
         }
-        break;
-*/
-        temp_buf = strstr(recv_buf, "GET /ip HTTP/1.1");
-        if (temp_buf) {
-            for (int i=0; i<16; i++) {
-                if ((ip[i] >= '0' && ip[i] <= '9') || ip[i] == '.' || ip[i] == '_') {
-                    send_data_1[ACK_1_OFFSET+i] = ip[i];
-                } else {
-                    send_data_1[ACK_1_OFFSET+i] = '_';
-                }
-            }
-            ESP_LOGI(TAG, "IP: %s", send_data_1);
-        }
+    } // else ignore request
 
-        ESP_LOGI(TAG, "IP: %s", send_data_1);
-        ret = SSL_write(ssl, send_data_1, send_bytes_1);
-        if (ret > 0) {
-            ESP_LOGI(TAG, "OK");
-        } else {
-            ESP_LOGI(TAG, "error");
-        }
-
-        break;
-/*
-        ret = SSL_write(ssl, send_data, send_bytes);
-        if (ret > 0) {
-            ESP_LOGI(TAG, "OK");
-        } else {
-            ESP_LOGI(TAG, "error");
-        }
-        break;
-*/
-    } while (1);
-
+done:
     SSL_shutdown(ssl);
 failed5:
     close(new_sockfd);
