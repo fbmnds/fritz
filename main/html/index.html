@@ -1,24 +1,21 @@
 <!DOCTYPE html>
 <html>
 
-
-
-
 <head>
     <meta charset="utf-8"/>
     <style>
 
-.fh-switch {
+.swx {
   position: relative; }
 
-.fh-switch > [type="checkbox"]:checked,
-.fh-switch > [type="checkbox"]:not(:checked) {
+.swx > [type="checkbox"]:checked,
+.swx > [type="checkbox"]:not(:checked) {
   width: 0;
   height: 0;
   display: none;
   opacity: 0; }
-  .fh-switch > [type="checkbox"]:checked + label,
-  .fh-switch > [type="checkbox"]:not(:checked) + label {
+  .swx > [type="checkbox"]:checked + label,
+  .swx > [type="checkbox"]:not(:checked) + label {
     cursor: pointer;
     display: inline-block;
     width: 150px;
@@ -26,8 +23,8 @@
     margin-top: 7px;
     margin-bottom: 7px;
     padding-right: 60px; }
-    .fh-switch > [type="checkbox"]:checked + label:after,
-    .fh-switch > [type="checkbox"]:not(:checked) + label:after {
+    .swx > [type="checkbox"]:checked + label:after,
+    .swx > [type="checkbox"]:not(:checked) + label:after {
       content: "";
       top: 4px;
       right: 10px;
@@ -35,8 +32,8 @@
       height: 12px;
       position: absolute;
       border-radius: 30px; }
-    .fh-switch > [type="checkbox"]:checked + label + .fh-switch-knob,
-    .fh-switch > [type="checkbox"]:not(:checked) + label + .fh-switch-knob {
+    .swx > [type="checkbox"]:checked + label + .swx-knob,
+    .swx > [type="checkbox"]:not(:checked) + label + .swx-knob {
       top: 0;
       width: 20px;
       height: 20px;
@@ -51,28 +48,28 @@
       -moz-transition: right .1s ease-in, background-color .1s ease-in;
       -o-transition: right .1s ease-in, background-color .1s ease-in;
       -ms-transition: right .1s ease-in, background-color .1s ease-in; }
-  .fh-switch > [type="checkbox"]:checked:focus + label:after, .fh-switch > [type="checkbox"]:checked:focus + label + .fh-switch-knob,
-  .fh-switch > [type="checkbox"]:not(:checked):focus + label:after,
-  .fh-switch > [type="checkbox"]:not(:checked):focus + label + .fh-switch-knob {
+  .swx > [type="checkbox"]:checked:focus + label:after, .swx > [type="checkbox"]:checked:focus + label + .swx-knob,
+  .swx > [type="checkbox"]:not(:checked):focus + label:after,
+  .swx > [type="checkbox"]:not(:checked):focus + label + .swx-knob {
     box-shadow: 0 0 6px 0 #6fb5fb; }
-  .fh-switch > [type="checkbox"]:checked[disabled] + label, .fh-switch > [type="checkbox"]:checked[disabled] + label:after, .fh-switch > [type="checkbox"]:checked[disabled] + label + .fh-switch-knob,
-  .fh-switch > [type="checkbox"]:not(:checked)[disabled] + label,
-  .fh-switch > [type="checkbox"]:not(:checked)[disabled] + label:after,
-  .fh-switch > [type="checkbox"]:not(:checked)[disabled] + label + .fh-switch-knob {
+  .swx > [type="checkbox"]:checked[disabled] + label, .swx > [type="checkbox"]:checked[disabled] + label:after, .swx > [type="checkbox"]:checked[disabled] + label + .swx-knob,
+  .swx > [type="checkbox"]:not(:checked)[disabled] + label,
+  .swx > [type="checkbox"]:not(:checked)[disabled] + label:after,
+  .swx > [type="checkbox"]:not(:checked)[disabled] + label + .swx-knob {
     cursor: not-allowed;
     opacity: 0.4;}
 
-.fh-switch > [type="checkbox"]:checked + label:after {
+.swx > [type="checkbox"]:checked + label:after {
   background-color: #9effc4; }
 
-.fh-switch > [type="checkbox"]:not(:checked) + label:after {
+.swx > [type="checkbox"]:not(:checked) + label:after {
   background-color: #dddddd; }
 
-.fh-switch > [type="checkbox"]:checked + label + .fh-switch-knob {
+.swx > [type="checkbox"]:checked + label + .swx-knob {
   right: 5px;
   background-color: #57cb85; }
 
-.fh-switch > [type="checkbox"]:not(:checked) + label + .fh-switch-knob {
+.swx > [type="checkbox"]:not(:checked) + label + .swx-knob {
   right: 25px;
   background-color: #849fbb; }
 
@@ -84,21 +81,31 @@
     <meta name="msapplication-TileImage" content="https://bit.ly/2T8nz9K" />
 
     <script type="text/javascript">
-        function onload() {
+        function status() {
             var url = document.URL;
             url = url.substring(0, url.indexOf("/index.html"));
             url += "/status";
-            var req = new HttpRequest(url);
+            var req = new XMLHttpRequest(url);
             req.responseType = 'json';
-            req.open('GET', url, false);
-            var json = req.response;
-            alert(json);
-            document.getElementById('fun-p64').value = json.fun_p64;
-            document.getElementById('zen').value     = json.zen;
-            document.getElementById('store').value   = json.store;
-            document.getElementById('eth').value     = json.eth;
-            req.send(null);
-
+            req.open('GET', url, true);
+            req.send();
+            req.onloadend = function () {
+                var json = req.response;
+                document.getElementById('fun-p64').value = json.fun_p64;
+                document.getElementById('zen').value     = json.zen;
+                document.getElementById('store').value   = json.store;
+                document.getElementById('eth').value     = json.eth;
+                toggle_visibility("get-status");
+                toggle_visibility("controls");
+            };
+        };
+        function toggle_visibility(id = 'undefined')
+        {
+            var e = document.getElementById(id);
+            if ( e.style.display == 'block' )
+                e.style.display = 'none';
+            else
+                e.style.display = 'block';
         };
         function toggle(x = 'undefined') {
             var p = new XMLHttpRequest();
@@ -142,44 +149,48 @@
 
 </head>
 
-<body onload="onload();">
+<body>
 
     <h3>Controls</h3>
 
-    <div>
-        <span class="fh-switch">
-            <input type="checkbox" id="fun-p64" name="sw-1" onclick="kk_1();">
-            <label for="fun-p64">fun & p64</label>
-            <span class="fh-switch-knob"></span>
-        </span>
+    <div id="get-status" style="display:block;" >
+        <input type="button" value="status" onclick="status();">
     </div>
 
+    <div id="controls" style="display:none;">
+        <div>
+            <span class="swx">
+                <input type="checkbox" id="fun-p64" name="sw-1" onclick="kk_1();">
+                <label for="fun-p64">fun & p64</label>
+                <span class="swx-knob"></span>
+            </span>
+        </div>
 
-    <div>
-        <span class="fh-switch">
-            <input type="checkbox" id="zen" name="sw-2" onclick="kk_2();">
-            <label for="zen">zen</label>
-            <span class="fh-switch-knob"></span>
-        </span>
+        <div>
+            <span class="swx">
+                <input type="checkbox" id="zen" name="sw-2" onclick="kk_2();">
+                <label for="zen">zen</label>
+                <span class="swx-knob"></span>
+            </span>
+        </div>
+
+        <div>
+            <span class="swx">
+                <input type="checkbox" id="store" name="sw-3" onclick="kk_3();">
+                <label for="store">store</label>
+                <span class="swx-knob"></span>
+            </span>
+        </div>
+
+        <div>
+            <span class="swx">
+                <input type="checkbox" id="eth" name="sw-4" onclick="kk_4();">
+                <label for="eth">eth</label>
+                <span class="swx-knob"></span>
+            </span>
+        </div>
     </div>
 
-
-    <div>
-        <span class="fh-switch">
-            <input type="checkbox" id="store" name="sw-3" onclick="kk_3();">
-            <label for="store">store</label>
-            <span class="fh-switch-knob"></span>
-        </span>
-    </div>
-
-
-    <div>
-        <span class="fh-switch">
-            <input type="checkbox" id="eth" name="sw-4" onclick="kk_4();">
-            <label for="eth">eth</label>
-            <span class="fh-switch-knob"></span>
-        </span>
-    </div>
 
 </body>
 
