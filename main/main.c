@@ -75,7 +75,7 @@ const static char *TAG = "relay";
                          "%s" \
                          "\r\n"
 #define TLS_SERVER_ACK_1_LEN    81
-#define TLS_SERVER_ACK_1_BUFLEN 7200
+#define TLS_SERVER_ACK_1_BUFLEN 8850
 static const char text_html[] = "text/html";
 static const char app_json[]  = "application/json";
 
