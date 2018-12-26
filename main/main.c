@@ -94,7 +94,7 @@ pin_state_t pin_state = {
 };
 
 #define TLS_SERVER_ACK_1_STATE "{ \"fun_p64\": %d, \"zen\": %d, \"store\": %d, \"eth\": %d }"
-#define TLS_SERVER_ACK_1_STATELEN 61
+#define TLS_SERVER_ACK_1_STATELEN 48
 
 static void tls_task(void *p)
 {
