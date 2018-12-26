@@ -81,86 +81,95 @@
     <meta name="msapplication-TileImage" content="https://bit.ly/2T8nz9K" />
 
     <script type="text/javascript">
-        function status() {
-            var url = document.URL;
-            url = url.substring(0, url.indexOf("/index.html"));
-            url += "/status";
+        var fun_p64 = 0;
+        var zen     = 0;
+        var store   = 0;
+        var eth     = 0;
+        var url0 = document.URL;
+        url0 = url0.substring(0, url0.indexOf("/index.html"));
+        function status () {
+            var url = url0 + "/status";
             var req = new XMLHttpRequest(url);
             req.responseType = 'json';
             req.open('GET', url, true);
             req.send();
             req.onloadend = function () {
                 var json = req.response;
-                document.getElementById('fun-p64').value = json.fun_p64;
-                document.getElementById('zen').value     = json.zen;
-                document.getElementById('store').value   = json.store;
-                document.getElementById('eth').value     = json.eth;
-                toggle_visibility("get-status");
-                toggle_visibility("controls");
+                fun_p64 = json.fun_p64;
+                zen     = json.zen;
+                store   = json.store;
+                eth     = json.eth;
+                swx_visibility("get-status");
+                swx_visibility("controls");
+                swx_ctl_state ();
             };
         };
-        function toggle_visibility(id = 'undefined')
-        {
+        function swx_ctl_state () {
+            if (fun_p64 == 1) {
+                var e = document.getElementById('fun-p64');
+                e.checked = true;
+            };
+            if (zen == 1) {
+                var e = document.getElementById('zen');
+                e.checked = true;
+            };
+            if (store == 1) {
+                var e = document.getElementById('store');
+                e.checked = true;
+            };
+            if (eth == 1) {
+                var e = document.getElementById('eth');
+                e.checked = true;
+            };
+        };
+        function swx_visibility (id = 'undefined') {
             var e = document.getElementById(id);
-            if ( e.style.display == 'block' )
+            if (e.style.display == 'block')
                 e.style.display = 'none';
             else
                 e.style.display = 'block';
         };
-        function toggle(x = 'undefined') {
+        function swx (x = 'undefined') {
             var p = new XMLHttpRequest();
-            var url = document.URL;
-            url = url.substring(0, url.indexOf("/index.html"));
-            if (x == 'fun-p64') {
-                url += "/1";
-            } else if (x == 'zen') {
-                url += "/3";
-            } else if (x == 'store') {
-                url += "/2";
-            } else if (x == 'eth') {
-                url += "/4";
-            } else { return -1; }
-            if (document.getElementById(x).value == 0) {
-                url += "/on";
-//                alert(url + "\n>" + p.responseText + "<");
-                document.getElementById(x).value = 1;
-            } else {
-                url += "/off";
-//                alert(url + "\n>" + p.responseText + "<");
-                document.getElementById(x).value = 0;
-            }
+            var url = url0;
+
+            function swx_ctl (c = -1) {
+                if (c == 0) { c = 1; url += "/on"; }
+                else        { c = 0; url += "/off"; }
+            };
+
+            if (x == 'fun-p64')    { url += "/1"; swx_ctl(fun_p64); }
+            else if (x == 'zen')   { url += "/3"; swx_ctl(zen); }
+            else if (x == 'store') { url += "/2"; swx_ctl(store); }
+            else if (x == 'eth')   { url += "/4"; swx_ctl(eth); }
+            else { return -1; }
+
             p.open("GET", url);
             p.send(null);
-            while(!p.DONE) {
-                ;
-            }
-
+            while(!p.DONE) { ; };
             return 0;
         };
-        function kk(x = 'undefined') {
-            toggle(x);
-        };
-        function kk_1() { kk('fun-p64'); };
-        function kk_2() { kk('zen'); };
-        function kk_3() { kk('store'); };
-        function kk_4() { kk('eth'); };
+        function swx1 () { swx('fun-p64'); };
+        function swx2 () { swx('zen'); };
+        function swx3 () { swx('store'); };
+        function swx4 () { swx('eth'); };
     </script>
 
 
 </head>
 
-<body>
+<body onload="status();">
 
     <h3>Controls</h3>
 
-    <div id="get-status" style="display:block;" >
-        <input type="button" value="status" onclick="status();">
+    <div id="get-status" style="display:block;">
+        waiting for status ...
     </div>
 
     <div id="controls" style="display:none;">
         <div>
             <span class="swx">
-                <input type="checkbox" id="fun-p64" name="sw-1" onclick="kk_1();">
+                <input type="checkbox" id="fun-p64" onclick="swx1();">
                 <label for="fun-p64">fun & p64</label>
                 <span class="swx-knob"></span>
             </span>
@@ -168,7 +177,7 @@
 
         <div>
             <span class="swx">
-                <input type="checkbox" id="zen" name="sw-2" onclick="kk_2();">
+                <input type="checkbox" id="zen" onclick="swx2();">
                 <label for="zen">zen</label>
                 <span class="swx-knob"></span>
             </span>
@@ -176,7 +185,7 @@
 
         <div>
             <span class="swx">
-                <input type="checkbox" id="store" name="sw-3" onclick="kk_3();">
+                <input type="checkbox" id="store" onclick="swx3();">
                 <label for="store">store</label>
                 <span class="swx-knob"></span>
             </span>
@@ -184,7 +193,7 @@
 
         <div>
             <span class="swx">
-                <input type="checkbox" id="eth" name="sw-4" onclick="kk_4();">
+                <input type="checkbox" id="eth" onclick="swx4();">
                 <label for="eth">eth</label>
                 <span class="swx-knob"></span>
             </span>

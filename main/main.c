@@ -74,7 +74,8 @@ const static char *TAG = "relay";
                          "Content-Length: %d\r\n\r\n" \
                          "%s" \
                          "\r\n"
-#define TLS_SERVER_ACK_1_BUFLEN 6800
+#define TLS_SERVER_ACK_1_LEN    81
+#define TLS_SERVER_ACK_1_BUFLEN 7200
 static const char text_html[] = "text/html";
 static const char app_json[]  = "application/json";
 
@@ -118,7 +119,7 @@ static void tls_task(void *p)
     extern const unsigned char server_key_end[]   asm("_binary_server_key_end");
     const unsigned int server_key_bytes = server_key_end - server_key_start;
 
-    assert(main_html_index_html_len + strlen(TLS_SERVER_ACK_1) + 5 <= TLS_SERVER_ACK_1_BUFLEN);
+    assert(main_html_index_html_len + TLS_SERVER_ACK_1_LEN + 5 <= TLS_SERVER_ACK_1_BUFLEN);
 
     ESP_LOGI(TAG, "SSL server context create ......");
     /* For security reasons, it is best if you can use
