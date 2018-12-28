@@ -8,7 +8,7 @@
 */
 
 #include "sdkconfig.h"
-#include "openssl_server.h"
+#include "tls/openssl_server.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -68,14 +68,6 @@ const static char *TAG = "relay";
 #define TLS_SERVER_ACK     "HTTP/1.1 200 OK\r\n"
 #define TLS_SERVER_ACK_LEN 17
 
-#define TLS_SERVER_ACK_1 "HTTP/1.1 200 OK\r\n" \
-                         "Connection: close\r\n" \
-                         "Content-Type: %s\r\n" \
-                         "Content-Length: %d\r\n\r\n" \
-                         "%s" \
-                         "\r\n"
-#define TLS_SERVER_ACK_1_LEN    81
-#define TLS_SERVER_ACK_1_BUFLEN 8850
 static const char text_html[] = "text/html";
 static const char app_json[]  = "application/json";
 
@@ -111,13 +103,13 @@ static void tls_task(void *p)
     char *temp_buf;
     static char index_buf[TLS_SERVER_ACK_1_BUFLEN];
 
-    extern const unsigned char cacert_pem_start[] asm("_binary_cacert_pem_start");
-    extern const unsigned char cacert_pem_end[]   asm("_binary_cacert_pem_end");
-    const unsigned int cacert_pem_bytes = cacert_pem_end - cacert_pem_start;
+    extern const unsigned char server_pem_start[] asm("_binary_server_pem_start");
+    extern const unsigned char server_pem_end[]   asm("_binary_server_pem_end");
+    const unsigned int server_pem_bytes = server_pem_end - server_pem_start;
 
-    extern const unsigned char server_key_start[] asm("_binary_server_key_start");
-    extern const unsigned char server_key_end[]   asm("_binary_server_key_end");
-    const unsigned int server_key_bytes = server_key_end - server_key_start;
+    extern const unsigned char server_key_pem_start[] asm("_binary_server_key_pem_start");
+    extern const unsigned char server_key_pem_end[]   asm("_binary_server_key_pem_end");
+    const unsigned int server_key_pem_bytes = server_key_pem_end - server_key_pem_start;
 
     assert(main_html_index_html_len + TLS_SERVER_ACK_1_LEN + 5 <= TLS_SERVER_ACK_1_BUFLEN);
 
@@ -134,7 +126,7 @@ static void tls_task(void *p)
     ESP_LOGI(TAG, "OK");
 
     ESP_LOGI(TAG, "SSL server context set own certification......");
-    ret = SSL_CTX_use_certificate_ASN1(ctx, cacert_pem_bytes, cacert_pem_start);
+    ret = SSL_CTX_use_certificate_ASN1(ctx, server_pem_bytes, server_pem_start);
     if (!ret) {
         ESP_LOGI(TAG, "failed");
         goto failed2;
@@ -142,7 +134,7 @@ static void tls_task(void *p)
     ESP_LOGI(TAG, "OK");
 
     ESP_LOGI(TAG, "SSL server context set private key......");
-    ret = SSL_CTX_use_PrivateKey_ASN1(0, ctx, server_key_start, server_key_bytes);
+    ret = SSL_CTX_use_PrivateKey_ASN1(0, ctx, server_key_pem_start, server_key_pem_bytes);
     if (!ret) {
         ESP_LOGI(TAG, "failed");
         goto failed2;
