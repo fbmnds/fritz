@@ -34,16 +34,10 @@
 
 #include "esp_tls.h"
 
-#ifndef _HTML_INDEX_H_
-#define _HTML_INDEX_H_
-#include "html/index.h"
 #include "secrets/secrets.h"
 #include "tls/openssl_server.h"
 #include "ipify/ipify.h"
 #include "telegram/telegram.h"
-
-#endif
-
 
 
 static EventGroupHandle_t wifi_event_group;

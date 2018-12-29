@@ -87,8 +87,6 @@ static void tls_task(void *p)
     extern const unsigned char server_key_pem_end[]   asm("_binary_server_key_pem_end");
     const unsigned int server_key_pem_bytes = server_key_pem_end - server_key_pem_start;
 
-    assert(main_html_index_html_len + TLS_SERVER_ACK_1_LEN + 5 <= TLS_SERVER_ACK_1_BUFLEN);
-
     ESP_LOGI(TAG, "SSL server context create ......");
     /* For security reasons, it is best if you can use
        TLSv1_2_server_method() here instead of TLS_server_method().
@@ -251,6 +249,7 @@ _200:
     goto done;
 
 index:
+    /*
     temp_buf = strstr(recv_buf, "/index.html HTTP/1.1");
     if (temp_buf) {
         memset(index_buf, 0, TLS_SERVER_ACK_1_BUFLEN);
@@ -267,6 +266,7 @@ index:
         }
         goto done;
     }
+    */
 
     temp_buf = strstr(recv_buf, "/status HTTP/1.1");
     if (temp_buf) {
