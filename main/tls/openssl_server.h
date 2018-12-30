@@ -19,11 +19,20 @@
 
 #define TLS_LOCAL_TCP_PORT   443
 
-#define TLS_SERVER_ACK     "HTTP/1.1 200 OK\r\n"
-#define TLS_SERVER_ACK_LEN 17
+#define TLS_SERVER_ACK     "HTTP/1.1 200 OK\r\n" \
+                           "Access-Control-Allow-Origin: "ORIGIN"\r\n" \
+                           "Keep-Alive: timeout=2, max=10\r\n" \
+                           "Connection: Keep-Alive\r\n" \
+                         "Content-Type: text/plain\r\n" \
+                         "Content-Length: 2\r\n\r\n" \
+                         "{}" \
+                         "\r\n"
+#define TLS_SERVER_ACK_LEN strlen(TLS_SERVER_ACK)
 
 #define TLS_SERVER_ACK_1 "HTTP/1.1 200 OK\r\n" \
-                         "Access-Control-Allow-Origin: *\r\n" \
+                         "Access-Control-Allow-Origin: "ORIGIN"\r\n" \
+                         "Keep-Alive: timeout=2, max=10\r\n" \
+                         "Connection: Keep-Alive\r\n" \
                          "Content-Type: %s\r\n" \
                          "Content-Length: %d\r\n\r\n" \
                          "%s" \
@@ -48,7 +57,7 @@ const static char *TAG = "relay";
 #define PIN_4 GPIO_NUM_26
 
 static const char text_html[] = "text/html";
-static const char app_json[]  = "application/json";
+static const char app_json[]  = "text/plain";
 
 typedef struct pin_state {
     int fun_p64;
@@ -182,6 +191,7 @@ reconnect:
     temp_buf = strstr(recv_buf, API_KEY);
     if (!temp_buf) {
         ESP_LOGI(TAG, "SSL read: ignore request");
+        ESP_LOGI(TAG, "%s", recv_buf);
         goto done;
     }
     temp_buf = NULL;
