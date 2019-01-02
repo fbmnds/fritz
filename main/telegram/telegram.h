@@ -27,7 +27,7 @@ static const char *T_REQUEST = "POST "TELEGRAM_URL" HTTP/1.1\r\n"
     "Host: "TELEGRAM_SERVER"\r\n"
     "User-Agent: esp-idf/1.0 esp32\r\n"
     "Accept: */*\r\n"
-    "Content-Length: 20\r\n"
+    "Content-Length: %d\r\n"
     "Content-Type: application/x-www-form-urlencodedr\n\r\n"
     "text=%s";
 
@@ -56,6 +56,7 @@ static void telegram_task(void *pvParameters)
         if (temp_buf) {
             goto loop2;
         } else {
+            bzero(prev_ip,sizeof(prev_ip));
             strcpy(prev_ip, ip);
         }
 
@@ -74,7 +75,7 @@ static void telegram_task(void *pvParameters)
             goto loop;
         }
 
-        sprintf(request, T_REQUEST, ip);
+        sprintf(request, T_REQUEST, 5 + strlen(ip), ip);
         request_len = strlen(request);
 
         size_t written_bytes = 0;

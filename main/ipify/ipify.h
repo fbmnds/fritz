@@ -91,12 +91,16 @@ static void ipify_task(void *pvParameters)
             if (len > 120) {
                 buf[15] = '\0';
                 if  (!strcmp(buf,"HTTP/1.1 200 OK")) {
+                    bzero(ip,sizeof(ip));
                     int j = 0;
                     for(int i = len - 16; i < len; i++) {
                         if ((buf[i] >='0' && buf[i] <= '9') || buf[i] == '.') {
                             ip[j] = buf[i];
                             j++;
                         }
+                    }
+                    if(j < 8) {
+                        strcpy(ip, "___.___.___.___");
                     }
                 }
             }
