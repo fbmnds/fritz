@@ -58,6 +58,7 @@ static void telegram_task(void *pvParameters)
         } else {
             bzero(prev_ip,sizeof(prev_ip));
             strcpy(prev_ip, ip);
+            set_api_key();
         }
 
         if (connected == false) {
@@ -75,7 +76,12 @@ static void telegram_task(void *pvParameters)
             goto loop;
         }
 
-        sprintf(request, T_REQUEST, 5 + strlen(ip), ip);
+        for (int i=0; i<strlen(ip); i++) buf[i] = ip[i];
+        buf[strlen(ip)]=';';
+        for (int i=strlen(ip)+1; i<strlen(ip)+1+strlen(API_KEY); i++) buf[i] = API_KEY[i-strlen(ip)-1];
+        buf[strlen(ip)+1+strlen(API_KEY)] = '\0';
+
+        sprintf(request, T_REQUEST, 5 + strlen(buf), buf);
         request_len = strlen(request);
 
         size_t written_bytes = 0;

@@ -97,6 +97,8 @@ static void tls_task(void *p)
     extern const unsigned char server_key_pem_end[]   asm("_binary_server_key_pem_end");
     const unsigned int server_key_pem_bytes = server_key_pem_end - server_key_pem_start;
 
+    set_api_key();
+
     ESP_LOGI(TAG, "SSL server context create ......");
     /* For security reasons, it is best if you can use
        TLSv1_2_server_method() here instead of TLS_server_method().
