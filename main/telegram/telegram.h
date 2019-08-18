@@ -34,7 +34,7 @@ static const char *T_REQUEST = "POST "TELEGRAM_URL" HTTP/1.1\r\n"
 static void telegram_task(void *pvParameters)
 {
     char *temp_buf;
-    char request[300];
+    char request[1024];
     int request_len;
     char buf[512];
     int ret, len;
