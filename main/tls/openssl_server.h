@@ -88,7 +88,7 @@ static void tls_task(void *p)
     static char recv_buf[TLS_RECV_BUF_LEN];
     char *temp_buf;
     static char index_buf[TLS_SERVER_ACK_1_BUFLEN];
-
+/*
     extern const unsigned char server_pem_start[] asm("_binary_server_pem_start");
     extern const unsigned char server_pem_end[]   asm("_binary_server_pem_end");
     const unsigned int server_pem_bytes = server_pem_end - server_pem_start;
@@ -96,21 +96,23 @@ static void tls_task(void *p)
     extern const unsigned char server_key_pem_start[] asm("_binary_server_key_pem_start");
     extern const unsigned char server_key_pem_end[]   asm("_binary_server_key_pem_end");
     const unsigned int server_key_pem_bytes = server_key_pem_end - server_key_pem_start;
-
+*/
     set_api_key();
 
-    ESP_LOGI(TAG, "SSL server context create ......");
+    // ESP_LOGI(TAG, "SSL server context create ......");
     /* For security reasons, it is best if you can use
        TLSv1_2_server_method() here instead of TLS_server_method().
        However some old browsers may not support TLS v1.2.
     */
+    /*
     ctx = SSL_CTX_new(TLSv1_2_server_method());
     if (!ctx) {
         ESP_LOGI(TAG, "failed");
         goto failed1;
     }
     ESP_LOGI(TAG, "OK");
-
+    */
+    /*
     ESP_LOGI(TAG, "SSL server context set own certification......");
     ret = SSL_CTX_use_certificate_ASN1(ctx, server_pem_bytes, server_pem_start);
     if (!ret) {
@@ -118,7 +120,8 @@ static void tls_task(void *p)
         goto failed2;
     }
     ESP_LOGI(TAG, "OK");
-
+    */
+    /*
     ESP_LOGI(TAG, "SSL server context set private key......");
     ret = SSL_CTX_use_PrivateKey_ASN1(0, ctx, server_key_pem_start, server_key_pem_bytes);
     if (!ret) {
@@ -126,7 +129,7 @@ static void tls_task(void *p)
         goto failed2;
     }
     ESP_LOGI(TAG, "OK");
-
+    */
     ESP_LOGI(TAG, "SSL server create socket ......");
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
@@ -156,6 +159,7 @@ static void tls_task(void *p)
     ESP_LOGI(TAG, "OK");
 
 reconnect:
+    /*
     ESP_LOGI(TAG, "SSL server create ......");
     ssl = SSL_new(ctx);
     if (!ssl) {
@@ -163,7 +167,7 @@ reconnect:
         goto failed3;
     }
     ESP_LOGI(TAG, "OK");
-
+    */
     connected = true;
 
     ESP_LOGI(TAG, "SSL server socket accept client ......");
@@ -174,7 +178,7 @@ reconnect:
     }
     ESP_LOGI(TAG, "OK");
 
-    SSL_set_fd(ssl, new_sockfd);
+    //SSL_set_fd(ssl, new_sockfd);
 
     ret = SSL_accept(ssl);
     if (!ret) {

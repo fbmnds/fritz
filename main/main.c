@@ -36,7 +36,6 @@
 
 #include "secrets/secrets.h"
 #include "tls/openssl_server.h"
-#include "tls/html_server.h"
 #include "ipify/ipify.h"
 #include "telegram/telegram.h"
 
@@ -107,7 +106,6 @@ static void wifi_conn_init(void)
 
 void app_main(void)
 {
-    app_main2();
     uint8_t mac[6] = { 0x80, 0x7D, 0x3A, 0x80, 0, 2 };
     esp_base_mac_addr_set(mac);
 
