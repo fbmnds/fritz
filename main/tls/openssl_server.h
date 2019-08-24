@@ -17,12 +17,12 @@
 
 #define TLS_RECV_BUF_LEN     1024
 
-#define TLS_LOCAL_TCP_PORT   443
+#define TLS_LOCAL_TCP_PORT   80
 
-#define TLS_SERVER_ACK     "HTTP/1.1 200 OK\r\n" \
-                           "Access-Control-Allow-Origin: "ORIGIN"\r\n" \
-                           "Keep-Alive: timeout=2, max=10\r\n" \
-                           "Connection: Keep-Alive\r\n" \
+#define TLS_SERVER_ACK   "HTTP/1.1 200 OK\r\n" \
+                         "Access-Control-Allow-Origin: "ORIGIN"\r\n" \
+                         "Keep-Alive: timeout=2, max=10\r\n" \
+                         "Connection: Keep-Alive\r\n" \
                          "Content-Type: text/plain\r\n" \
                          "Content-Length: 2\r\n\r\n" \
                          "{}" \
@@ -78,8 +78,8 @@ static void tls_task(void *p)
 {
     int ret;
 
-    SSL_CTX *ctx;
-    SSL *ssl;
+    //SSL_CTX *ctx;
+    //SSL *ssl;
 
     int sockfd, new_sockfd;
     socklen_t addr_len;
@@ -178,19 +178,20 @@ reconnect:
     }
     ESP_LOGI(TAG, "OK");
 
-    //SSL_set_fd(ssl, new_sockfd);
 
-    ret = SSL_accept(ssl);
-    if (!ret) {
-        ESP_LOGI(TAG, "failed");
-        goto failed5;
-    }
-    ESP_LOGI(TAG, "OK");
+    //SSL_set_fd(ssl, new_sockfd);
+ 
+    // ret = SSL_accept(ssl);
+    // if (!ret) {
+    //     ESP_LOGI(TAG, "failed");
+    //     goto failed5;
+    // }
+    // ESP_LOGI(TAG, "OK");
 
     ESP_LOGI(TAG, "SSL server read message ......");
 
     memset(recv_buf, 0, TLS_RECV_BUF_LEN);
-    ret = SSL_read(ssl, recv_buf, TLS_RECV_BUF_LEN - 1);
+    ret = read(new_sockfd, recv_buf, TLS_RECV_BUF_LEN - 1);
 
     ESP_LOGI(TAG, "SSL read: ret = %d\n%s", ret, recv_buf);
 
@@ -257,7 +258,7 @@ reconnect:
     goto index;
 
 _200:
-    ret = SSL_write(ssl, TLS_SERVER_ACK, TLS_SERVER_ACK_LEN);
+    ret = write(new_sockfd, TLS_SERVER_ACK, TLS_SERVER_ACK_LEN);
     if (ret > 0) {
         ESP_LOGI(TAG, "OK");
     } else {
@@ -296,7 +297,7 @@ index:
                            app_json,
                            TLS_SERVER_ACK_1_STATELEN,
                            recv_buf);
-        ret = SSL_write(ssl, index_buf, strlen(index_buf));
+        ret = write(new_sockfd, index_buf, strlen(index_buf));
         ESP_LOGI(TAG, "index_buf\n%s", index_buf);
         if (ret > 0) {
             ESP_LOGI(TAG, "OK");
@@ -307,22 +308,22 @@ index:
     // else drop request
 
 done:
-    SSL_shutdown(ssl);
-failed5:
+    //SSL_shutdown(ssl);
+//failed5:
     close(new_sockfd);
     new_sockfd = -1;
 failed4:
-    SSL_free(ssl);
-    ssl = NULL;
+    //SSL_free(ssl);
+    //ssl = NULL;
     vTaskDelay((150) / portTICK_PERIOD_MS);
     goto reconnect;
 failed3:
     close(sockfd);
     sockfd = -1;
 failed2:
-    SSL_CTX_free(ctx);
-    ctx = NULL;
-failed1:
+    //SSL_CTX_free(ctx);
+    //ctx = NULL;
+//failed1:
     vTaskDelete(NULL);
     ESP_LOGE(TAG, "task deleted");
     return ;
