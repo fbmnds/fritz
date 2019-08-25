@@ -5,7 +5,7 @@
 #include <time.h>
 #include <assert.h>
 
-#include "../main/base64.h"
+#include "../main/secrets/base64.h"
 
 
 void test1 (void)

@@ -14,7 +14,7 @@ extern const uint8_t ipifyorg_pem_end[] asm("_binary_ipifyorg_pem_end");
 #define IPIFY_SERVER   "api.ipify.org"
 #define IPIFY_PORT     "443"
 #define IPIFY_URL      "https://api.ipify.org"
-#define IPIFY_PRIORITY TLS_TASK_PRIORITY+2
+#define IPIFY_PRIORITY HTTP_TASK_PRIORITY+2
 #define IPIFY_TAG       "ipify"
 
 static const char *REQUEST = "GET / HTTP/1.1\r\n"

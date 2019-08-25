@@ -21,23 +21,26 @@ extern const uint8_t telegram_pem_end[] asm("_binary_telegram_pem_end");
 #define TELEGRAM_PORT     "443"
 #define TELEGRAM_URL      "/bot"BOT_TOKEN"/sendMessage?chat_id="BOT_ID
 #define TELEGRAM_TAG      "telegram"
-#define TELEGRAM_PRIORITY TLS_TASK_PRIORITY+1
+#define TELEGRAM_PRIORITY HTTP_TASK_PRIORITY+1
 
 static const char *T_REQUEST = "POST "TELEGRAM_URL" HTTP/1.1\r\n"
     "Host: "TELEGRAM_SERVER"\r\n"
     "User-Agent: esp-idf/1.0 esp32\r\n"
     "Accept: */*\r\n"
     "Content-Length: %d\r\n"
-    "Content-Type: application/x-www-form-urlencodedr\n\r\n"
+    "Content-Type: application/x-www-form-urlencoded\n\r\n"
     "text=%s";
+#define TEXT_EQ_LEN 5
 
 static void telegram_task(void *pvParameters)
 {
     char *temp_buf;
-    char request[1024];
+    char request[1536];
     int request_len;
+    char buf_b64[1024];
     char buf[512];
-    int ret, len;
+    int ret, len, buf_len, buf_b64_len;
+
     const esp_tls_cfg_t cfg = {
         /*
         .cacert_pem_buf   = telegram_pem_start,
@@ -67,6 +70,7 @@ static void telegram_task(void *pvParameters)
         }
         sprintf(request, "https://%s%s", TELEGRAM_SERVER, TELEGRAM_URL);
         ESP_LOGI(TELEGRAM_TAG, "requested url: %s", request);
+
         struct esp_tls *tls = esp_tls_conn_http_new(request, &cfg);
 
         if(tls != NULL) {
@@ -78,11 +82,16 @@ static void telegram_task(void *pvParameters)
 
         for (int i=0; i<strlen(ip); i++) buf[i] = ip[i];
         buf[strlen(ip)]=';';
-        for (int i=strlen(ip)+1; i<strlen(ip)+1+strlen(API_KEY); i++) buf[i] = API_KEY[i-strlen(ip)-1];
-        buf[strlen(ip)+1+strlen(API_KEY)] = '\0';
+        buf_len = strlen(ip)+1+strlen(API_KEY);
 
-        sprintf(request, T_REQUEST, 5 + strlen(buf), buf);
+        for (int i=strlen(ip)+1; i<buf_len; i++) buf[i] = API_KEY[i-strlen(ip)-1];
+        buf[buf_len] = '\0';
+        
+        b64_encrypt(buf, buf_len, buf_b64, &buf_b64_len);
+
+        sprintf(request, T_REQUEST, TEXT_EQ_LEN + strlen(buf_b64), buf_b64);
         request_len = strlen(request);
+        ESP_LOGI(TELEGRAM_TAG, "request: %s", request);
 
         size_t written_bytes = 0;
         do {

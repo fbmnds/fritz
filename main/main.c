@@ -35,7 +35,7 @@
 #include "esp_tls.h"
 
 #include "secrets/secrets.h"
-#include "tls/openssl_server.h"
+#include "http/http_server.h"
 #include "ipify/ipify.h"
 #include "telegram/telegram.h"
 
@@ -47,6 +47,8 @@ static EventGroupHandle_t wifi_event_group;
    to the AP with an IP? */
 const static int CONNECTED_BIT = BIT0;
 
+static bool ipify_created = false;
+static bool telegram_created = false;
 
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 {

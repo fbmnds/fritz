@@ -4,7 +4,7 @@
 #
 
 
-PROJECT_NAME := openssl_server
+PROJECT_NAME := relais_server
 
 
 include $(IDF_PATH)/make/project.mk
