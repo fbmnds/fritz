@@ -97,7 +97,7 @@ static void wifi_conn_init(void)
     };
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
-    ESP_LOGI(TAG, "try start the WIFI SSID:[%s] password:[%s]\n", WIFI_SSID, WIFI_PASSW);
+    ESP_LOGI(TAG, "try start the WIFI SSID:[%s] password:[%s]\n", WIFI_SSID, WIFI_PASSW_SHD);
 
     while (! esp_wifi_start()) {
         vTaskDelay((3*1000) / portTICK_PERIOD_MS);

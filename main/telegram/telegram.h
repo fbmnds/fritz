@@ -37,9 +37,9 @@ static void telegram_task(void *pvParameters)
     char *temp_buf;
     char request[1536];
     int request_len;
-    char buf_b64[1024];
+    char buf_hex[1024];
     char buf[512];
-    int ret, len, buf_len, buf_b64_len;
+    int ret, len, buf_len, buf_hex_len;
 
     const esp_tls_cfg_t cfg = {
         /*
@@ -87,9 +87,10 @@ static void telegram_task(void *pvParameters)
         for (int i=strlen(ip)+1; i<buf_len; i++) buf[i] = API_KEY[i-strlen(ip)-1];
         buf[buf_len] = '\0';
         
-        hex_encrypt(buf, buf_len, buf_b64, &buf_b64_len);
+        aes128_cbc_encrypt(buf, buf_len, buf_hex, &buf_hex_len);
 
-        sprintf(request, T_REQUEST, TEXT_EQ_LEN + strlen(buf_b64), buf_b64);
+        //sprintf(request, T_REQUEST, TEXT_EQ_LEN + strlen(buf_hex), buf_hex);
+        sprintf(request, T_REQUEST, TEXT_EQ_LEN + buf_hex_len - 1, buf_hex);
         request_len = strlen(request);
         ESP_LOGI(TELEGRAM_TAG, "request: %s", request);
 
