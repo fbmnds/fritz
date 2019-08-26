@@ -87,7 +87,7 @@ static void telegram_task(void *pvParameters)
         for (int i=strlen(ip)+1; i<buf_len; i++) buf[i] = API_KEY[i-strlen(ip)-1];
         buf[buf_len] = '\0';
         
-        b64_encrypt(buf, buf_len, buf_b64, &buf_b64_len);
+        hex_encrypt(buf, buf_len, buf_b64, &buf_b64_len);
 
         sprintf(request, T_REQUEST, TEXT_EQ_LEN + strlen(buf_b64), buf_b64);
         request_len = strlen(request);
