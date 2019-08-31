@@ -10,6 +10,7 @@
 #ifndef _HTTP_SERVER_H_
 #define _HTTP_SERVER_H_
 
+#include "../secrets/secrets.h"
 
 #define HTTP_TASK_NAME        "http"
 #define HTTP_TASK_STACK_WORDS 10240
@@ -21,9 +22,6 @@
 
 #define HTTP_SERVER_ACK \
 "HTTP/1.1 200 OK\r\n" \
-"Access-Control-Allow-Origin: "ORIGIN"\r\n" \
-"Keep-Alive: timeout=2, max=10\r\n" \
-"Connection: Keep-Alive\r\n" \
 "Content-Type: text/plain\r\n" \
 "Content-Length: 2\r\n\r\n" \
 "{}" \
@@ -33,9 +31,6 @@
 
 #define HTTP_SERVER_ACK_1 \
 "HTTP/1.1 200 OK\r\n" \
-"Access-Control-Allow-Origin: "ORIGIN"\r\n" \
-"Keep-Alive: timeout=2, max=10\r\n" \
-"Connection: Keep-Alive\r\n" \
 "Content-Type: %s\r\n" \
 "Content-Length: %d\r\n\r\n" \
 "%s" \
@@ -85,7 +80,10 @@ static void tls_task(void *p)
     socklen_t addr_len;
     struct sockaddr_in sock_addr;
 
-    static char recv_buf[HTTP_RECV_BUF_LEN];
+    int in_len, idx;
+    static          char recv_buf[HTTP_RECV_BUF_LEN];
+    static unsigned char recv_buf2[HTTP_RECV_BUF_LEN];
+    unsigned char* recv_buf_decr;
     char *temp_buf;
     static char index_buf[HTTP_SERVER_ACK_1_BUFLEN];
 /*
@@ -196,6 +194,41 @@ reconnect:
     ESP_LOGI(TAG, "HTTP read: ret = %d\n%s", ret, recv_buf);
 
     //handle_request(recv_buf, temp_buf, API_KEY, ); 
+    in_len = 0;
+    idx = HTTP_RECV_BUF_LEN;
+    while (--idx) {
+        if (recv_buf[idx] == '\r' || recv_buf[idx] == '\n') recv_buf[idx] = '\0';
+        if (recv_buf[idx] != '\0' && recv_buf[idx] != '\r' && recv_buf[idx] != '\n') break;
+    }
+    while (idx) {
+        if ((recv_buf[idx] >= '0' && recv_buf[idx] <= '9') || 
+            (recv_buf[idx] >= 'a' && recv_buf[idx] <= 'f')) {
+            idx--; 
+            in_len++;
+        } else 
+            break;
+    }
+    if (in_len) idx++;
+    if (!idx) {
+        ESP_LOGE(TAG, "HTTP read: ignore request");
+        ESP_LOGE(TAG, "%s", recv_buf);        
+        goto done;
+    }
+
+
+    ESP_LOGI(TAG, "recv_buf_decr %s", &recv_buf[idx]); 
+
+    memset(recv_buf2, 0, HTTP_RECV_BUF_LEN);
+    recv_buf_decr = recv_buf2;
+    aes128_cbc_decrypt(&recv_buf[idx], in_len, recv_buf_decr);
+    if (recv_buf_decr) {
+        ESP_LOGI(TAG, "decrypted %s", recv_buf_decr); 
+        goto _200;
+    }
+
+    // skip everything else
+    goto done;
+
     temp_buf = strstr(recv_buf, API_KEY);
     if (!temp_buf) {
         ESP_LOGI(TAG, "HTTP read: ignore request");
