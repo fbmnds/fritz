@@ -186,20 +186,20 @@ reconnect:
 
     in_len = validate_req(recv_buf, recv_buf_decr);
     if (in_len < 0) {
-        ESP_LOGE(TAG, "HTTP read: ignore request");
+        ESP_LOGE(TAG, "HTTP validation error: ignore request");
         ESP_LOGE(TAG, "%s", recv_buf);
         goto _500;        
     }
 
-    if (!register_req(req_register, &register_idx, &recv_buf_decr[REGISTER_ITEM_POS])) {
-        ESP_LOGE(TAG, "HTTP read: ignore request");
+    if (register_req(req_register, &register_idx, &recv_buf_decr[REGISTER_ITEM_POS])) {
+        ESP_LOGE(TAG, "HTTP register error: ignore request");
         ESP_LOGE(TAG, "%s", recv_buf);
         goto _500;        
     }
 
     temp_buf = strstr(recv_buf, API_KEY);
     if (!temp_buf) {
-        ESP_LOGE(TAG, "HTTP read: ignore request");
+        ESP_LOGE(TAG, "HTTP API_KEY error: ignore request");
         ESP_LOGE(TAG, "%s", recv_buf);
         goto done;
     }
@@ -379,26 +379,30 @@ int register_req(uint32_t *req_register, int *register_idx, const unsigned char*
     int pos;
     uint32_t hash;
 
+    ESP_LOGI(TAG, "register_req item %s", item);
     esp_sha(SHA2_256, item, REGISTER_ITEM_LEN, (unsigned char *) &hash);
+    ESP_LOGI(TAG, "register_req hash %ud", hash);
 
     for (pos=0; pos<=*register_idx; pos++) {
         if (req_register[pos] == hash) break;
     }        
-
+    ESP_LOGI(TAG, "register_req pos %d", pos);
     // ignore replayed requests
+
     if (pos <= *register_idx) return 1;
 
     *register_idx += 1;
+    ESP_LOGI(TAG, "register_req *register_idx %d", *register_idx);
 
-    // refresh exhausted register
     if (*register_idx == REGISTER_LEN) {
+        ESP_LOGI(TAG, "register_req refresh exhausted register");
         for (pos=1; pos<REGISTER_LEN; pos++) req_register[pos] = 0;
         req_register[0] = hash;
         renew_api_key = true;
         return 0;
     } 
 
-    // register new request
+    ESP_LOGI(TAG, "register_req register new request");
     req_register[*register_idx] = hash;
     return 0;
 }
