@@ -13,6 +13,8 @@ extern bool connected;
 extern char ip[];
 static char prev_ip[] = "___.___.___.___";
 
+extern bool renew_api_key;
+
 extern const uint8_t telegram_pem_start[] asm("_binary_telegram_pem_start");
 extern const uint8_t telegram_pem_end[] asm("_binary_telegram_pem_end");
 
@@ -56,13 +58,12 @@ static void telegram_task(void *pvParameters)
         }
 
         temp_buf = strstr(ip, prev_ip);
-        if (temp_buf) {
-            goto loop2;
-        } else {
-            bzero(prev_ip,sizeof(prev_ip));
-            strcpy(prev_ip, ip);
-            set_api_key();
-        }
+        if (temp_buf && !renew_api_key) goto loop2;
+        
+        bzero(prev_ip,sizeof(prev_ip));
+        strcpy(prev_ip, ip);
+        set_api_key();
+        renew_api_key = false;
 
         if (connected == false) {
             ESP_LOGI(TELEGRAM_TAG, "not connected");
@@ -140,12 +141,11 @@ static void telegram_task(void *pvParameters)
     loop:
         esp_tls_conn_delete(tls);
     loop2:
-        vTaskDelay((60*60*1000) / portTICK_PERIOD_MS);
+        vTaskDelay((5*1000) / portTICK_PERIOD_MS);
         continue;
 
     retry:
         vTaskDelay((5*1000) / portTICK_PERIOD_MS);
-
     }
 }
 

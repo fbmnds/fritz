@@ -10,7 +10,13 @@
 #ifndef _HTTP_SERVER_H_
 #define _HTTP_SERVER_H_
 
+#include "esp32/sha.h"
+
 #include "../secrets/secrets.h"
+
+#define REGISTER_LEN      64
+#define REGISTER_ITEM_LEN API_KEY_LEN
+#define REGISTER_ITEM_POS 15
 
 #define HTTP_TASK_NAME        "http"
 #define HTTP_TASK_STACK_WORDS 10240
@@ -29,6 +35,16 @@
 
 #define HTTP_SERVER_ACK_LEN strlen(HTTP_SERVER_ACK)
 
+#define HTTP_SERVER_ACK_500 \
+"HTTP/1.1 500 OK\r\n" \
+"Content-Type: text/plain\r\n" \
+"Content-Length: 2\r\n\r\n" \
+"{}" \
+"\r\n"
+
+#define HTTP_SERVER_ACK_LEN_500 strlen(HTTP_SERVER_ACK_500)
+
+
 #define HTTP_SERVER_ACK_1 \
 "HTTP/1.1 200 OK\r\n" \
 "Content-Type: %s\r\n" \
@@ -43,6 +59,7 @@
 
 static bool connected = false;
 static char ip[] = "___.___.___.___";
+static bool renew_api_key = false;
 
 const static char *TAG = HTTP_TASK_NAME;
 
@@ -68,15 +85,13 @@ pin_state_t pin_state = {
     .eth = 0,
 };
 
+int validate_req(char* rec_buf, const unsigned char* recv_buf_decr);
+
+int register_req(uint32_t* req_register, int* register_idx, const unsigned char* item);
 
 static void tls_task(void *p)
 {
-    int ret;
-
-    //SSL_CTX *ctx;
-    //SSL *ssl;
-
-    int sockfd, new_sockfd;
+    int ret,sockfd, new_sockfd;
     socklen_t addr_len;
     struct sockaddr_in sock_addr;
 
@@ -86,48 +101,12 @@ static void tls_task(void *p)
     unsigned char* recv_buf_decr;
     char *temp_buf;
     static char index_buf[HTTP_SERVER_ACK_1_BUFLEN];
-/*
-    extern const unsigned char server_pem_start[] asm("_binary_server_pem_start");
-    extern const unsigned char server_pem_end[]   asm("_binary_server_pem_end");
-    const unsigned int server_pem_bytes = server_pem_end - server_pem_start;
 
-    extern const unsigned char server_key_pem_start[] asm("_binary_server_key_pem_start");
-    extern const unsigned char server_key_pem_end[]   asm("_binary_server_key_pem_end");
-    const unsigned int server_key_pem_bytes = server_key_pem_end - server_key_pem_start;
-*/
+    static uint32_t req_register[REGISTER_LEN];
+    int register_idx = -1;
+
     set_api_key();
 
-    // ESP_LOGI(TAG, "SSL server context create ......");
-    /* For security reasons, it is best if you can use
-       TLSv1_2_server_method() here instead of HTTP_server_method().
-       However some old browsers may not support TLS v1.2.
-    */
-    /*
-    ctx = SSL_CTX_new(TLSv1_2_server_method());
-    if (!ctx) {
-        ESP_LOGI(TAG, "failed");
-        goto failed1;
-    }
-    ESP_LOGI(TAG, "OK");
-    */
-    /*
-    ESP_LOGI(TAG, "SSL server context set own certification......");
-    ret = SSL_CTX_use_certificate_ASN1(ctx, server_pem_bytes, server_pem_start);
-    if (!ret) {
-        ESP_LOGI(TAG, "failed");
-        goto failed2;
-    }
-    ESP_LOGI(TAG, "OK");
-    */
-    /*
-    ESP_LOGI(TAG, "SSL server context set private key......");
-    ret = SSL_CTX_use_PrivateKey_ASN1(0, ctx, server_key_pem_start, server_key_pem_bytes);
-    if (!ret) {
-        ESP_LOGI(TAG, "failed");
-        goto failed2;
-    }
-    ESP_LOGI(TAG, "OK");
-    */
     ESP_LOGI(TAG, "HTTP server create socket ......");
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
@@ -157,15 +136,6 @@ static void tls_task(void *p)
     ESP_LOGI(TAG, "OK");
 
 reconnect:
-    /*
-    ESP_LOGI(TAG, "SSL server create ......");
-    ssl = SSL_new(ctx);
-    if (!ssl) {
-        ESP_LOGI(TAG, "failed");
-        goto failed3;
-    }
-    ESP_LOGI(TAG, "OK");
-    */
     connected = true;
 
     ESP_LOGI(TAG, "HTTP server socket accept client ......");
@@ -175,16 +145,6 @@ reconnect:
         connected = false;
         goto failed4;
     }
-    ESP_LOGI(TAG, "OK");
-
-    //SSL_set_fd(ssl, new_sockfd);
- 
-    // ret = SSL_accept(ssl);
-    // if (!ret) {
-    //     ESP_LOGI(TAG, "failed");
-    //     goto failed5;
-    // }
-    // ESP_LOGI(TAG, "OK");
 
     ESP_LOGI(TAG, "HTTP server read message ......");
 
@@ -215,7 +175,6 @@ reconnect:
         goto done;
     }
 
-
     ESP_LOGI(TAG, "recv_buf_decr %s", &recv_buf[idx]); 
 
     memset(recv_buf2, 0, HTTP_RECV_BUF_LEN);
@@ -223,87 +182,103 @@ reconnect:
     aes128_cbc_decrypt(&recv_buf[idx], in_len, recv_buf_decr);
     if (recv_buf_decr) {
         ESP_LOGI(TAG, "decrypted %s", recv_buf_decr); 
-        goto _200;
     }
 
-    // skip everything else
-    goto done;
+    in_len = validate_req(recv_buf, recv_buf_decr);
+    if (in_len < 0) {
+        ESP_LOGE(TAG, "HTTP read: ignore request");
+        ESP_LOGE(TAG, "%s", recv_buf);
+        goto _500;        
+    }
+
+    if (!register_req(req_register, &register_idx, &recv_buf_decr[REGISTER_ITEM_POS])) {
+        ESP_LOGE(TAG, "HTTP read: ignore request");
+        ESP_LOGE(TAG, "%s", recv_buf);
+        goto _500;        
+    }
 
     temp_buf = strstr(recv_buf, API_KEY);
     if (!temp_buf) {
-        ESP_LOGI(TAG, "HTTP read: ignore request");
-        ESP_LOGI(TAG, "%s", recv_buf);
+        ESP_LOGE(TAG, "HTTP read: ignore request");
+        ESP_LOGE(TAG, "%s", recv_buf);
         goto done;
     }
-    temp_buf = NULL;
 
-    temp_buf = strstr(recv_buf, "/1/on HTTP/1.1");
+    temp_buf = strstr(recv_buf, "/1/on");
     if (temp_buf) {
         gpio_set_level(PIN_1, 1);
         pin_state.fun_p64 = 1;
         goto _200;
     }
-
-    temp_buf = strstr(recv_buf, "/1/off HTTP/1.1");
+    temp_buf = strstr(recv_buf, "/1/off");
     if (temp_buf) {
         gpio_set_level(PIN_1, 0);
         pin_state.fun_p64 = 0;
         goto _200;
     }
 
-    temp_buf = strstr(recv_buf, "/2/on HTTP/1.1");
+    temp_buf = strstr(recv_buf, "/2/on");
     if (temp_buf) {
         gpio_set_level(PIN_2, 1);
         pin_state.store = 1;
         goto _200;
     }
-    temp_buf = strstr(recv_buf, "/2/off HTTP/1.1");
+    temp_buf = strstr(recv_buf, "/2/off");
     if (temp_buf) {
         gpio_set_level(PIN_2, 0);
         pin_state.store = 0;
         goto _200;
     }
 
-    temp_buf = strstr(recv_buf, "/3/on HTTP/1.1");
+    temp_buf = strstr(recv_buf, "/3/on");
     if (temp_buf) {;
         gpio_set_level(PIN_3, 1);
         pin_state.zen = 1;
         goto _200;
     }
-    temp_buf = strstr(recv_buf, "/3/off HTTP/1.1");
+    temp_buf = strstr(recv_buf, "/3/off");
     if (temp_buf) {
         gpio_set_level(PIN_3, 0);
         pin_state.zen = 0;
         goto _200;
     }
 
-    temp_buf = strstr(recv_buf, "/4/on HTTP/1.1");
+    temp_buf = strstr(recv_buf, "/4/on");
     if (temp_buf) {
         gpio_set_level(PIN_4, 1);
         pin_state.eth = 1;
         goto _200;
     }
-    temp_buf = strstr(recv_buf, "/4/off HTTP/1.1");
+    temp_buf = strstr(recv_buf, "/4/off");
     if (temp_buf) {
         gpio_set_level(PIN_4, 0);
         pin_state.eth = 0;
         goto _200;
     }
 
-    goto index;
+    goto status;
 
 _200:
     ret = write(new_sockfd, HTTP_SERVER_ACK, HTTP_SERVER_ACK_LEN);
     if (ret > 0) {
-        ESP_LOGI(TAG, "OK");
+        ESP_LOGI(TAG, "HTTP 200 reply OK");
     } else {
-        ESP_LOGI(TAG, "error");
+        ESP_LOGE(TAG, "HTTP 200 reply error");
     }
     goto done;
 
+_500:
+    ret = write(new_sockfd, HTTP_SERVER_ACK_500, HTTP_SERVER_ACK_LEN_500);
+    if (ret > 0) {
+        ESP_LOGI(TAG, "HTTP 500 reply OK");
+    } else {
+        ESP_LOGE(TAG, "HTTP 500 reply error");
+    }
+    goto done;
+
+/*
 index:
-    /*
-    temp_buf = strstr(recv_buf, "/index.html HTTP/1.1");
+    temp_buf = strstr(recv_buf, "/index.html");
     if (temp_buf) {
         memset(index_buf, 0, HTTP_SERVER_ACK_1_BUFLEN);
         sprintf(index_buf, HTTP_SERVER_ACK_1,
@@ -321,7 +296,8 @@ index:
     }
     */
 
-    temp_buf = strstr(recv_buf, "/status HTTP/1.1");
+status:
+    temp_buf = strstr(recv_buf, "/status");
     if (temp_buf) {
         memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
         sprintf(recv_buf, HTTP_SERVER_ACK_1_STATE,
@@ -335,30 +311,23 @@ index:
         ret = write(new_sockfd, index_buf, strlen(index_buf));
         ESP_LOGI(TAG, "index_buf\n%s", index_buf);
         if (ret > 0) {
-            ESP_LOGI(TAG, "OK");
+            ESP_LOGI(TAG, "/status reply OK");
         } else {
-            ESP_LOGI(TAG, "error");
+            ESP_LOGE(TAG, "/status reply error");
         }
     }
     // else drop request
 
 done:
-    //SSL_shutdown(ssl);
-//failed5:
     close(new_sockfd);
     new_sockfd = -1;
 failed4:
-    //SSL_free(ssl);
-    //ssl = NULL;
     vTaskDelay((150) / portTICK_PERIOD_MS);
     goto reconnect;
 failed3:
     close(sockfd);
     sockfd = -1;
 failed2:
-    //SSL_CTX_free(ctx);
-    //ctx = NULL;
-//failed1:
     vTaskDelete(NULL);
     ESP_LOGE(TAG, "task deleted");
     return ;
@@ -381,5 +350,57 @@ static void openssl_server_init(void)
     }
 }
 
+
+int validate_req(char* recv_buf, const unsigned char* recv_buf_decr)
+{
+    // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx;/x/on
+    //     4    9    14   19   24   29
+    // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx;/x/off
+    // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx;/status
+    int i = 0;
+
+    while (recv_buf_decr[i]) {
+        recv_buf[i] = (char) recv_buf_decr[i];
+        i++;
+    }
+    recv_buf[i] = '\0';
+    if (i < 30) return -1*i;
+    if (recv_buf[4] != '-') return -4;
+    if (recv_buf[9] != '-') return -9;
+    if (recv_buf[19] != '-') return -19;
+    if (recv_buf[24] != '-') return -24;
+    if (recv_buf[14] != ';') return -14;
+    if (recv_buf[29] != ';') return -29;
+    return i;
+}
+
+int register_req(uint32_t *req_register, int *register_idx, const unsigned char* item)
+{
+    int pos;
+    uint32_t hash;
+
+    esp_sha(SHA2_256, item, REGISTER_ITEM_LEN, (unsigned char *) &hash);
+
+    for (pos=0; pos<=*register_idx; pos++) {
+        if (req_register[pos] == hash) break;
+    }        
+
+    // ignore replayed requests
+    if (pos <= *register_idx) return 1;
+
+    *register_idx += 1;
+
+    // refresh exhausted register
+    if (*register_idx == REGISTER_LEN) {
+        for (pos=1; pos<REGISTER_LEN; pos++) req_register[pos] = 0;
+        req_register[0] = hash;
+        renew_api_key = true;
+        return 0;
+    } 
+
+    // register new request
+    req_register[*register_idx] = hash;
+    return 0;
+}
 
 #endif
