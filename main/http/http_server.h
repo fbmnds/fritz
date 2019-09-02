@@ -15,8 +15,8 @@
 #include "../secrets/secrets.h"
 
 #define REGISTER_LEN      64
-#define REGISTER_ITEM_LEN API_KEY_LEN
-#define REGISTER_ITEM_POS 15
+#define REGISTER_ITEM_LEN 14
+#define REGISTER_ITEM_POS 0
 
 #define HTTP_TASK_NAME        "http"
 #define HTTP_TASK_STACK_WORDS 10240
@@ -379,16 +379,28 @@ int register_req(uint32_t *req_register, int *register_idx, const unsigned char*
     int pos;
     uint32_t hash;
 
+    if (API_KEY_LEN != REGISTER_ITEM_LEN) {
+        ESP_LOGE(TAG, "register_req system error: API_KEY_LEN != REGISTER_ITEM_LEN");
+        return -1;
+    }
+
     ESP_LOGI(TAG, "register_req item %s", item);
     esp_sha(SHA2_256, item, REGISTER_ITEM_LEN, (unsigned char *) &hash);
     ESP_LOGI(TAG, "register_req hash %ud", hash);
+
+    // reject API_KEY as invalid register item
+    pos = REGISTER_ITEM_LEN;
+    for (int i=0; i<REGISTER_ITEM_LEN; i++) {
+        if (item[i] == (unsigned char) API_KEY[i]) pos--;
+    }
+    if (pos == 0) return 1;
 
     for (pos=0; pos<=*register_idx; pos++) {
         if (req_register[pos] == hash) break;
     }        
     ESP_LOGI(TAG, "register_req pos %d", pos);
-    // ignore replayed requests
 
+    // ignore replayed requests
     if (pos <= *register_idx) return 1;
 
     *register_idx += 1;
