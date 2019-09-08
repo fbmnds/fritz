@@ -1,11 +1,3 @@
-/* OpenSSL server Example
-
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
 
 #ifndef _HTTP_SERVER_H_
 #define _HTTP_SERVER_H_
@@ -161,6 +153,11 @@ reconnect:
 
     ESP_LOGI(TAG, "HTTP read: ret = %d\n%s", ret, recv_buf);
 
+    temp_buf = strstr(recv_buf, "upload");
+    if (temp_buf) {
+        goto upload;
+    }
+
     //handle_request(recv_buf, temp_buf, API_KEY, ); 
     in_len = 0;
     idx = HTTP_RECV_BUF_LEN;
@@ -282,6 +279,61 @@ _500:
     } else {
         ESP_LOGE(TAG, "HTTP 500 reply error");
     }
+    goto done;
+
+upload:
+    temp_buf = strstr(recv_buf, "GET");
+    if (temp_buf) {
+        ESP_LOGI(TAG, "GET upload: initial call");
+
+        // TODO eliminate duplicated code
+        in_len = 0;
+        idx = HTTP_RECV_BUF_LEN;
+        while (--idx) {
+            if (recv_buf[idx] == '\r' || recv_buf[idx] == '\n') recv_buf[idx] = '\0';
+            if (recv_buf[idx] != '\0' && recv_buf[idx] != '\r' && recv_buf[idx] != '\n') break;
+        }
+        while (idx) {
+            if ((recv_buf[idx] >= '0' && recv_buf[idx] <= '9') || 
+                (recv_buf[idx] >= 'a' && recv_buf[idx] <= 'f')) {
+                idx--; 
+                in_len++;
+            } else 
+                break;
+        }
+        if (in_len) idx++;
+        if (!idx) {
+            ESP_LOGE(TAG, "HTTP read: ignore request");
+            ESP_LOGE(TAG, "%s", recv_buf);        
+            goto done;
+        }
+
+        memset(recv_buf2, 0, HTTP_RECV_BUF_LEN);
+        recv_buf_decr = recv_buf2;
+        aes128_cbc_decrypt(&recv_buf[idx], in_len, recv_buf_decr);
+        if (recv_buf_decr) {
+            ESP_LOGI(TAG, "decrypted %s", recv_buf_decr); 
+        }
+
+        in_len = validate_req(recv_buf, recv_buf_decr);
+        if (in_len < 0) {
+            ESP_LOGE(TAG, "HTTP validation error: ignore request");
+            ESP_LOGE(TAG, "%s", recv_buf);
+            goto _500;        
+        }        
+
+        if (register_req(req_register, &register_idx, &recv_buf_decr[REGISTER_ITEM_POS])) {
+            ESP_LOGE(TAG, "HTTP register error: ignore request");
+            ESP_LOGE(TAG, "%s", recv_buf);
+            goto _500;        
+        }        
+
+        // TODO return 200, permitt-token
+    }
+    if (temp_buf) {
+        ESP_LOGI(TAG, "POST upload sequence");
+    }
+    // else drop request
     goto done;
 
 /*
