@@ -63,10 +63,17 @@ static bool renew_api_key = false;
 
 const static char *TAG = HTTP_TASK_NAME;
 
-#define PIN_1 GPIO_NUM_12
+#define PIN_1 GPIO_NUM_16 // GPIO_NUM_12
 #define PIN_2 GPIO_NUM_14
 #define PIN_3 GPIO_NUM_27
 #define PIN_4 GPIO_NUM_26
+
+    // gpio_set_pull_mode(15, GPIO_PULLUP_ONLY);   // CMD, needed in 4- and 1- line modes
+    // gpio_set_pull_mode(2, GPIO_PULLUP_ONLY);    // D0, needed in 4- and 1-line modes
+    // gpio_set_pull_mode(4, GPIO_PULLUP_ONLY);    // D1, needed in 4-line mode only
+    // gpio_set_pull_mode(12, GPIO_PULLUP_ONLY);   // D2, needed in 4-line mode only
+    // gpio_set_pull_mode(13, GPIO_PULLUP_ONLY);   // D3, needed in 4- and 1-line modes
+
 
 static const char text_html[] = "text/html";
 static const char app_json[]  = "text/plain";

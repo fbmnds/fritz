@@ -1,5 +1,5 @@
 set(COMPONENT_SRCS "main.c")
-set(COMPONENT_ADD_INCLUDEDIRS "." "secrets" "ipify" "telegram" "http")
+set(COMPONENT_ADD_INCLUDEDIRS "." "secrets" "ipify" "telegram" "http" "sd_card")
 
 
 # Embed the certificate & key data directly in the built binary

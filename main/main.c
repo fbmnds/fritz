@@ -38,7 +38,7 @@
 #include "http/http_server.h"
 #include "ipify/ipify.h"
 #include "telegram/telegram.h"
-
+#include "sd_card/sd_card.h"
 
 static EventGroupHandle_t wifi_event_group;
 
@@ -111,6 +111,7 @@ void app_main(void)
     uint8_t mac[6] = { 0x80, 0x7D, 0x3A, 0x80, 0, 2 };
     esp_base_mac_addr_set(mac);
 
+    sd_card_init();
 
     gpio_pad_select_gpio(PIN_1);
     gpio_pad_select_gpio(PIN_2);
