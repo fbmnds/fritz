@@ -22,8 +22,8 @@
 #define HTTP_TASK_STACK_WORDS 10240
 #define HTTP_TASK_PRIORITY    5
 
-#define HTTP_RECV_BUF_LEN     1024
-
+#define HTTP_RECV_BUF_LEN       16*1024
+#define HTTP_RECV_BUF_SHORT_LEN    1024
 #define HTTP_LOCAL_TCP_PORT   80
 
 #define HTTP_SERVER_ACK \
@@ -107,6 +107,7 @@ static void tls_task(void *p)
     static unsigned char recv_buf2[HTTP_RECV_BUF_LEN];
     unsigned char* recv_buf_decr;
     char *temp_buf;
+    static char recv_buf_short[HTTP_RECV_BUF_SHORT_LEN];
     static char index_buf[HTTP_SERVER_ACK_1_BUFLEN];
 
     static uint32_t req_register[REGISTER_LEN];
@@ -306,15 +307,15 @@ index:
 status:
     temp_buf = strstr(recv_buf, "/status");
     if (temp_buf) {
-        memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
-        sprintf(recv_buf, HTTP_SERVER_ACK_1_STATE,
-                          pin_state.fun_p64, pin_state.zen,
-                          pin_state.store, pin_state.eth);
+        memset(recv_buf_short, 0, HTTP_RECV_BUF_SHORT_LEN);
+        sprintf(recv_buf_short, HTTP_SERVER_ACK_1_STATE,
+                                pin_state.fun_p64, pin_state.zen,
+                                pin_state.store, pin_state.eth);
         memset(index_buf, 0, HTTP_SERVER_ACK_1_BUFLEN);
         sprintf(index_buf, HTTP_SERVER_ACK_1,
                            app_json,
                            HTTP_SERVER_ACK_1_STATELEN,
-                           recv_buf);
+                           recv_buf_short);
         ret = write(new_sockfd, index_buf, strlen(index_buf));
         ESP_LOGI(TAG, "index_buf\n%s", index_buf);
         if (ret > 0) {
