@@ -5,6 +5,7 @@
 #include "esp32/sha.h"
 
 #include "../secrets/secrets.h"
+#include "http_string.h"
 
 #define REGISTER_LEN      64
 #define REGISTER_ITEM_LEN 14
@@ -53,10 +54,10 @@ static bool connected = false;
 static char ip[] = "___.___.___.___";
 static bool renew_api_key = false;
 
-const static char *TAG = HTTP_TASK_NAME;
+static const char *TAG = HTTP_TASK_NAME;
 
-#define PIN_1 GPIO_NUM_16 // GPIO_NUM_12
-#define PIN_2 GPIO_NUM_14
+#define PIN_1 GPIO_NUM_12
+#define PIN_2 GPIO_NUM_11  // GPIO_NUM_14
 #define PIN_3 GPIO_NUM_27
 #define PIN_4 GPIO_NUM_26
 
@@ -77,16 +78,20 @@ typedef struct pin_state {
     int eth;
 } pin_state_t;
 
-pin_state_t pin_state = {
+static pin_state_t pin_state = {
     .fun_p64 = 0,
     .zen     = 0,
     .store   = 0,
-    .eth = 0,
+    .eth     = 0
 };
+
+
 
 int validate_req(char* rec_buf, const unsigned char* recv_buf_decr);
 
 int register_req(uint32_t* req_register, int* register_idx, const unsigned char* item);
+
+
 
 static void tls_task(void *p)
 {
@@ -478,5 +483,6 @@ int register_req(uint32_t *req_register, int *register_idx, const unsigned char*
     req_register[*register_idx] = hash;
     return 0;
 }
+
 
 #endif

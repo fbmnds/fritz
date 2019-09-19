@@ -27,7 +27,7 @@ static const char *TAG2 = "SD_CARD";
 // By default, SDMMC peripheral is used.
 // To enable SPI mode, uncomment the following line:
 
-#define USE_SPI_MODE
+//#define USE_SPI_MODE
 
 // When testing SD and SPI modes, keep in mind that once the card has been
 // initialized in SPI mode, it can not be reinitialized in SD mode without
@@ -37,7 +37,7 @@ static const char *TAG2 = "SD_CARD";
 // Pin mapping when using SPI mode.
 // With this mapping, SD card can be used both in SPI and 1-line SD mode.
 // Note that a pull-up on CS line is required in SD mode.
-#define PIN_NUM_MISO 2 // 2
+#define PIN_NUM_MISO 2  // 2
 #define PIN_NUM_MOSI 15 // 15
 #define PIN_NUM_CLK  14 // 14
 #define PIN_NUM_CS   13 // 13
