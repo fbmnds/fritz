@@ -88,6 +88,7 @@ reconnect:
         }
     }
 
+/*
     in_len = 0;
     idx = HTTP_RECV_BUF_LEN;
     while (--idx) {
@@ -107,6 +108,12 @@ reconnect:
         ESP_LOGE(TAG, "HTTP read: ignore request");
         ESP_LOGE(TAG, "%s", recv_buf);        
         goto done;
+    }
+*/
+    
+    switch (set_payload_idx (&idx, &in_len, recv_buf)) {
+        case DONE: goto done;
+        default:   break;
     }
 
     ESP_LOGI(TAG, "recv_buf_decr %s", &recv_buf[idx]); 

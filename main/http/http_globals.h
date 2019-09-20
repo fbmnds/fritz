@@ -6,7 +6,7 @@
 #define REGISTER_ITEM_LEN 14
 #define REGISTER_ITEM_POS 0
 
-#define HTTP_TASK_NAME        "http"
+#define HTTP_TASK_NAME        "HTTP"
 #define HTTP_TASK_STACK_WORDS 10240
 #define HTTP_TASK_PRIORITY    5
 
@@ -77,7 +77,8 @@ static const char rt_post_status[] = "POST /status";
 typedef enum {
 	_200,
 	_500,
-	DONE
+	DONE,
+	CONTINUE
 } goto_t;
 
 
@@ -104,6 +105,12 @@ int cmp_str_head(const char* recv_buf, const str_pt* route)
 		if (recv_buf[i] != route->str[i]) return 0;
 	}
 	return 1;
+}
+
+void cp_str_head(char* recv_buf, const str_pt* str)
+{
+	for (int i=0; i<str->len; i++) recv_buf[i] = str->str[i];
+	return;
 }
 
 int validate_req(char* recv_buf, const unsigned char* recv_buf_decr)
@@ -172,6 +179,35 @@ int register_req(uint32_t *req_register, int *register_idx, const unsigned char*
     ESP_LOGI(TAG, "register_req register new request");
     req_register[*register_idx] = hash;
     return 0;
+}
+
+
+goto_t set_payload_idx (int *idx, int *in_len, char* recv_buf)
+{
+	*in_len = 0;
+    *idx = HTTP_RECV_BUF_LEN;
+
+    while (--*idx) {
+        if (recv_buf[*idx] == '\r' || recv_buf[*idx] == '\n') recv_buf[*idx] = '\0';
+        if (recv_buf[*idx] != '\0' && recv_buf[*idx] != '\r' && recv_buf[*idx] != '\n') break;
+    }
+    while (*idx) {
+    	printf("%c", recv_buf[*idx]);
+        if ((recv_buf[*idx] >= '0' && recv_buf[*idx] <= '9') || 
+            (recv_buf[*idx] >= 'a' && recv_buf[*idx] <= 'f')) {
+            (*idx)--; 
+            (*in_len)++;
+        } else 
+            break;
+    }
+    printf("\n");
+    if (*in_len) (*idx)++;
+    if (!(*idx)) {
+        ESP_LOGE(TAG, "HTTP read: ignore request");
+        ESP_LOGE(TAG, "%s", recv_buf);        
+        return DONE;
+    }
+    return CONTINUE;
 }
 
 
