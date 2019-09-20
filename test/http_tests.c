@@ -4,9 +4,15 @@
 #include <string.h>
 #include <assert.h>
 
+#define TEST 1
+
 #define ESP_LOGI(a, b, ...) printf("%s", a); printf(b, ##__VA_ARGS__);printf("\n")
 #define ESP_LOGE(a, b, ...) printf("%s", a); printf(b, ##__VA_ARGS__);printf("\n")
 
+typedef struct str_p {
+    char* str;
+    int  len;
+} str_pt;
 
 #include "test_secrets.h"
 
@@ -30,6 +36,11 @@ static char recv_buf[HTTP_RECV_BUF_LEN];
 "POST /upload/test.txt HTTP/1.1\r\n" \
 "Content-Length: 123\r\n\r\n" \
 "262c6d8baa84549ac2a089d9825220a09f53955aa5f4fd9dca89785b39ebbd3b42af884c8bab89300f7ea122a9016f2f\r\n"
+
+#define TEST2_RECV_BUF_DECRYPT \
+"POST /upload/test.txt HTTP/1.1\r\n" \
+"Content-Length: 123\r\n\r\n" \
+"xxxx-xxxx-xxxx;yyyy-yyyy-yyyy;1;on"
 
 #define TEST2_RECV_BUF_LEN strlen(TEST2_RECV_BUF)
 
@@ -218,12 +229,50 @@ void test5 (void)
 	assert(recv_p.len == strlen(test));
 	for (int i=0; i<recv_p.len; i++) assert(test[i] == recv_p.str[i]);
 
-	aes128_cbc_decrypt(recv_p.str, recv_p.len, recv_p.str);
+	aes128_cbc_decrypt2(recv_p.str, recv_p.len, recv_p.str);
 	
 	assert(strlen(recv_p.str) == strlen(test2));
 	for (int i=0; i<strlen(test2); i++) assert(test2[i] == recv_p.str[i]);
 
-	printf("test5: cp_str_head, set_payload_idx2 passed\n");
+	printf("test5: cp_str_head, set_payload_idx2, aes128_cbc_decrypt2 passed\n");
+}
+
+void test6 (void)
+{
+	char test_recv_buf[HTTP_RECV_BUF_LEN];
+	const char test_recv_buf_decrypt[] = TEST2_RECV_BUF_DECRYPT;
+	const char test[] = "262c6d8baa84549ac2a089d9825220a09f53955aa5f4fd9dca89785b39ebbd3b42af884c8bab89300f7ea122a9016f2f";
+	const char test2[] = "xxxx-xxxx-xxxx;yyyy-yyyy-yyyy;1;on";
+	
+	char req[] = TEST2_RECV_BUF;
+	str_pt recv_p;
+
+	int idx, in_len;
+
+	http_server_label_t ret;
+
+	memset(test_recv_buf, 0, HTTP_RECV_BUF_LEN);
+	recv_p.str = req;
+	recv_p.len = TEST2_RECV_BUF_LEN;
+	cp_str_head(test_recv_buf, &recv_p);
+
+	recv_p.str = NULL;
+	recv_p.len = 0;	
+	ret = set_payload_idx2(&recv_p, test_recv_buf);
+
+	assert(ret == CONTINUE);
+	assert(recv_p.str[0] == '2');
+	assert(recv_p.len == strlen(test));
+	for (int i=0; i<recv_p.len; i++) assert(test[i] == recv_p.str[i]);
+
+	aes128_cbc_decrypt3(&recv_p, &recv_p);
+	
+	assert(strlen(recv_p.str) == strlen(test2));
+	for (int i=0; i<strlen(test2); i++) assert(test2[i] == recv_p.str[i]);
+
+	for (int i=0; i<strlen(test_recv_buf); i++) assert(test_recv_buf[i] == test_recv_buf_decrypt[i]);
+
+	printf("test6: cp_str_head, set_payload_idx2, aes128_cbc_decrypt3 passed\n");
 }
 
 int main(void)
@@ -233,4 +282,5 @@ int main(void)
 	test3();
 	test4();
 	test5();
+	test6();
 }

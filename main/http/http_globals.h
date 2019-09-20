@@ -65,10 +65,12 @@ static const char *TAG = HTTP_TASK_NAME;
 // gpio_set_pull_mode(13, GPIO_PULLUP_ONLY);   // D3, needed in 4- and 1-line modes
 
 
+#ifndef TEST
 typedef struct str_p {
     char* str;
     int  len;
 } str_pt;
+#endif
 
 static const char rt_post_upload[] = "POST /upload/";
 static const char rt_post_set[]    = "POST /set/";
