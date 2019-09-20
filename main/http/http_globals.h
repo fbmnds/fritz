@@ -66,7 +66,7 @@ static const char *TAG = HTTP_TASK_NAME;
 
 
 typedef struct str_p {
-    const char* str;
+    char* str;
     int  len;
 } str_pt;
 
@@ -79,7 +79,7 @@ typedef enum {
 	_500,
 	DONE,
 	CONTINUE
-} goto_t;
+} http_server_label_t;
 
 
 static const char text_html[] = "text/html";
@@ -182,7 +182,7 @@ int register_req(uint32_t *req_register, int *register_idx, const unsigned char*
 }
 
 
-goto_t set_payload_idx (int *idx, int *in_len, char* recv_buf)
+http_server_label_t set_payload_idx (int *idx, int *in_len, char* recv_buf)
 {
 	*in_len = 0;
     *idx = HTTP_RECV_BUF_LEN;
@@ -192,7 +192,6 @@ goto_t set_payload_idx (int *idx, int *in_len, char* recv_buf)
         if (recv_buf[*idx] != '\0' && recv_buf[*idx] != '\r' && recv_buf[*idx] != '\n') break;
     }
     while (*idx) {
-    	printf("%c", recv_buf[*idx]);
         if ((recv_buf[*idx] >= '0' && recv_buf[*idx] <= '9') || 
             (recv_buf[*idx] >= 'a' && recv_buf[*idx] <= 'f')) {
             (*idx)--; 
@@ -200,7 +199,6 @@ goto_t set_payload_idx (int *idx, int *in_len, char* recv_buf)
         } else 
             break;
     }
-    printf("\n");
     if (*in_len) (*idx)++;
     if (!(*idx)) {
         ESP_LOGE(TAG, "HTTP read: ignore request");
@@ -210,5 +208,33 @@ goto_t set_payload_idx (int *idx, int *in_len, char* recv_buf)
     return CONTINUE;
 }
 
+http_server_label_t set_payload_idx2 (str_pt* str, char* recv_buf)
+{
+	str->len = 0;
+    str->str = recv_buf + sizeof(char)*HTTP_RECV_BUF_LEN;
+
+    while (--(str->str) != recv_buf) {
+        //if (str->str[0] == '\r' || str->str[0] == '\n') str->str[0] = '\0';
+        if (str->str[0] != '\0' && str->str[0] != '\r' && str->str[0] != '\n') break;
+    }
+    //printf("%s", str->str);
+    while (str->str != recv_buf) {
+    	//printf("%s", str->str);
+        if ((str->str[0] >= '0' && str->str[0] <= '9') || 
+            (str->str[0] >= 'a' && str->str[0] <= 'f')) {
+            (str->str)--; 
+            (str->len)++;
+        } else 
+            break;
+    }
+    //printf("%d\n", str->len);
+    if (str->len) (str->str)++;
+    if (str->str == recv_buf) {
+        ESP_LOGE(TAG, "HTTP read: ignore request");
+        ESP_LOGE(TAG, "%s", recv_buf);        
+        return DONE;
+    }
+    return CONTINUE;
+}
 
 #endif

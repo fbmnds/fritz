@@ -41,7 +41,7 @@ int upload_fn (str_pt* fn, const char* recv_buf, const char* upload_url)
 }
 
 
-goto_t post_upload(int new_sockfd, char* recv_buf, int ret)
+http_server_label_t post_upload(int new_sockfd, char* recv_buf, int ret)
 {
 	static unsigned char recv_buf2[HTTP_RECV_BUF_LEN];
 	unsigned char* recv_buf_decr;
