@@ -272,7 +272,9 @@ void test6 (void)
 
 	for (int i=0; i<strlen(test_recv_buf); i++) assert(test_recv_buf[i] == test_recv_buf_decrypt[i]);
 
-	printf("test6: cp_str_head, set_payload_idx2, aes128_cbc_decrypt3 passed\n");
+	assert (validate_req_base(&recv_p) == 0);
+
+	printf("test6: cp_str_head, set_payload_idx2, aes128_cbc_decrypt3, validate_req_base passed\n");
 }
 
 int main(void)

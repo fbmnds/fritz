@@ -90,13 +90,13 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int ret)
             ESP_LOGE(TAG, "%s", recv_buf);
             return _500;        
         }        
-
+/*      TODO
         if (register_req(req_register, &register_idx, &recv_buf_decr[REGISTER_ITEM_POS])) {
             ESP_LOGE(TAG, "HTTP register error: ignore request");
             ESP_LOGE(TAG, "%s", recv_buf);
             return _500;        
         }        
-
+*/
         // TODO return 200, permitt-token
     }
     if (temp_buf) {

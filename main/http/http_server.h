@@ -17,10 +17,9 @@ static void tls_task(void *p)
     socklen_t addr_len;
     struct sockaddr_in sock_addr;
 
-    int in_len, idx;
-    static          char recv_buf[HTTP_RECV_BUF_LEN];
-    static unsigned char recv_buf2[HTTP_RECV_BUF_LEN];
-    unsigned char* recv_buf_decr;
+    int idx;
+    static char recv_buf[HTTP_RECV_BUF_LEN];
+    str_pt recv_p;
     char *temp_buf;
     static char recv_buf_short[HTTP_RECV_BUF_SHORT_LEN];
     static char index_buf[HTTP_SERVER_ACK_1_BUFLEN];
@@ -78,7 +77,7 @@ reconnect:
 
     if (ret < HTTP_RECV_MIN_LEN) goto done;
 
-    fn.str = rt_post_upload;
+    fn.str = (char *) rt_post_upload;
     fn.len = strlen(rt_post_upload);
     if (cmp_str_head(recv_buf, &fn)) {
         switch (post_upload(new_sockfd, recv_buf, ret)) {
@@ -88,51 +87,29 @@ reconnect:
         }
     }
 
-/*
-    in_len = 0;
-    idx = HTTP_RECV_BUF_LEN;
-    while (--idx) {
-        if (recv_buf[idx] == '\r' || recv_buf[idx] == '\n') recv_buf[idx] = '\0';
-        if (recv_buf[idx] != '\0' && recv_buf[idx] != '\r' && recv_buf[idx] != '\n') break;
-    }
-    while (idx) {
-        if ((recv_buf[idx] >= '0' && recv_buf[idx] <= '9') || 
-            (recv_buf[idx] >= 'a' && recv_buf[idx] <= 'f')) {
-            idx--; 
-            in_len++;
-        } else 
-            break;
-    }
-    if (in_len) idx++;
-    if (!idx) {
-        ESP_LOGE(TAG, "HTTP read: ignore request");
-        ESP_LOGE(TAG, "%s", recv_buf);        
-        goto done;
-    }
-*/
-    
-    switch (set_payload_idx (&idx, &in_len, recv_buf)) {
+    recv_p.str = NULL;
+    recv_p.len = 0; 
+    switch (set_payload_idx2 (&recv_p, recv_buf)) {
         case DONE: goto done;
         default:   break;
     }
 
-    ESP_LOGI(TAG, "recv_buf_decr %s", &recv_buf[idx]); 
+    //ESP_LOGI(TAG, "recv_buf decrypted %s", *(recv_p.str)); // recv_p IS null terminated, as recv_buf is
 
-    memset(recv_buf2, 0, HTTP_RECV_BUF_LEN);
-    recv_buf_decr = recv_buf2;
-    aes128_cbc_decrypt(&recv_buf[idx], in_len, recv_buf_decr);
-    if (recv_buf_decr) {
-        ESP_LOGI(TAG, "decrypted %s", recv_buf_decr); 
+    aes128_cbc_decrypt3(&recv_p, &recv_p); // recv_p IS null terminated, being half as long as the encrypted string
+    /*
+    if (recv_p.str) {
+        ESP_LOGI(TAG, "decrypted %s", *(recv_p.str)); 
     }
+    */
 
-    in_len = validate_req(recv_buf, recv_buf_decr);
-    if (in_len < 0) {
+    if (validate_req_base(&recv_p) < 0) {
         ESP_LOGE(TAG, "HTTP validation error: ignore request");
         ESP_LOGE(TAG, "%s", recv_buf);
         goto _500;        
     }
 
-    if (register_req(req_register, &register_idx, &recv_buf_decr[REGISTER_ITEM_POS])) {
+    if (register_req(req_register, &register_idx, recv_p.str)) {
         ESP_LOGE(TAG, "HTTP register error: ignore request");
         ESP_LOGE(TAG, "%s", recv_buf);
         goto _500;        

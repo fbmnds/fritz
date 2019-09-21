@@ -65,13 +65,6 @@ static const char *TAG = HTTP_TASK_NAME;
 // gpio_set_pull_mode(13, GPIO_PULLUP_ONLY);   // D3, needed in 4- and 1-line modes
 
 
-#ifndef TEST
-typedef struct str_p {
-    char* str;
-    int  len;
-} str_pt;
-#endif
-
 static const char rt_post_upload[] = "POST /upload/";
 static const char rt_post_set[]    = "POST /set/";
 static const char rt_post_status[] = "POST /status";
@@ -117,10 +110,10 @@ void cp_str_head(char* recv_buf, const str_pt* str)
 
 int validate_req(char* recv_buf, const unsigned char* recv_buf_decr)
 {
-    // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx;/x/on
+    // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx;x;on
     //     4    9    14   19   24   29
-    // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx;/x/off
-    // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx;/status
+    // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx;x;off
+    // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx;
     int i = 0;
 
     while (recv_buf_decr[i]) {
@@ -138,7 +131,24 @@ int validate_req(char* recv_buf, const unsigned char* recv_buf_decr)
     return i;
 }
 
-int register_req(uint32_t *req_register, int *register_idx, const unsigned char* item)
+int validate_req_base(str_pt* str)
+{
+    // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx;x;on
+    //     4    9    14   19   24   29
+    // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx;x;off
+    // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx
+    int i = 0;
+    if (str->len < 30) return -1;
+    if (str->str[4] != '-') return -4;
+    if (str->str[9] != '-') return -9;
+    if (str->str[19] != '-') return -19;
+    if (str->str[24] != '-') return -24;
+    if (str->str[14] != ';') return -14;
+    //if (str->str[29] != ';') return -29;
+    return i;
+}
+
+int register_req(uint32_t *req_register, int *register_idx, const char* item)
 {
     int pos;
     uint32_t hash;
@@ -149,13 +159,13 @@ int register_req(uint32_t *req_register, int *register_idx, const unsigned char*
     }
 
     ESP_LOGI(TAG, "register_req item %s", item);
-    esp_sha(SHA2_256, item, REGISTER_ITEM_LEN, (unsigned char *) &hash);
+    esp_sha(SHA2_256, (unsigned char *) item, REGISTER_ITEM_LEN, (unsigned char *) &hash);
     ESP_LOGI(TAG, "register_req hash %ud", hash);
 
     // reject API_KEY as invalid register item
     pos = REGISTER_ITEM_LEN;
     for (int i=0; i<REGISTER_ITEM_LEN; i++) {
-        if (item[i] == (unsigned char) API_KEY[i]) pos--;
+        if (item[i] == API_KEY[i]) pos--;
     }
     if (pos == 0) return 1;
 
