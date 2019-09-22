@@ -17,7 +17,6 @@ static void tls_task(void *p)
     socklen_t addr_len;
     struct sockaddr_in sock_addr;
 
-    int idx;
     static char recv_buf[HTTP_RECV_BUF_LEN];
     str_pt recv_p;
     char *temp_buf;
@@ -94,14 +93,14 @@ reconnect:
         default:   break;
     }
 
-    //ESP_LOGI(TAG, "recv_buf decrypted %s", *(recv_p.str)); // recv_p IS null terminated, as recv_buf is
+    ESP_LOGI(TAG, "recv_buf decrypted %s", recv_p.str); // recv_p IS null terminated, as recv_buf is
 
     aes128_cbc_decrypt3(&recv_p, &recv_p); // recv_p IS null terminated, being half as long as the encrypted string
-    /*
+    
     if (recv_p.str) {
-        ESP_LOGI(TAG, "decrypted %s", *(recv_p.str)); 
+        ESP_LOGI(TAG, "decrypted %s", recv_p.str); 
     }
-    */
+    
 
     if (validate_req_base(&recv_p) < 0) {
         ESP_LOGE(TAG, "HTTP validation error: ignore request");
@@ -109,7 +108,7 @@ reconnect:
         goto _500;        
     }
 
-    if (register_req(req_register, &register_idx, recv_p.str)) {
+    if (register_req(req_register, &register_idx, &recv_p)) {
         ESP_LOGE(TAG, "HTTP register error: ignore request");
         ESP_LOGE(TAG, "%s", recv_buf);
         goto _500;        

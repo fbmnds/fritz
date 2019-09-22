@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <assert.h>
+#include <openssl/sha.h>
 
 #define TEST 1
 
@@ -19,6 +20,10 @@ typedef struct str_p {
 #define SHA2_256 0
 void esp_sha(int sha_type, const unsigned char *input, size_t ilen, unsigned char *output)
 {
+	unsigned char *o;
+
+	memset(output, 0 , 32);
+	o = SHA256(input, ilen, output);
 	return;
 }
 
@@ -207,7 +212,7 @@ void test5 (void)
 	char test_recv_buf[HTTP_RECV_BUF_LEN];
 	const char test[] = "262c6d8baa84549ac2a089d9825220a09f53955aa5f4fd9dca89785b39ebbd3b42af884c8bab89300f7ea122a9016f2f";
 	const char test2[] = "xxxx-xxxx-xxxx;yyyy-yyyy-yyyy;1;on";
-	
+
 	char req[] = TEST2_RECV_BUF;
 	str_pt recv_p;
 
@@ -243,7 +248,10 @@ void test6 (void)
 	const char test_recv_buf_decrypt[] = TEST2_RECV_BUF_DECRYPT;
 	const char test[] = "262c6d8baa84549ac2a089d9825220a09f53955aa5f4fd9dca89785b39ebbd3b42af884c8bab89300f7ea122a9016f2f";
 	const char test2[] = "xxxx-xxxx-xxxx;yyyy-yyyy-yyyy;1;on";
-	
+	const char test3[] = "xxxx-xxxx-xxxx";
+	unsigned char out[64];
+	uint32_t hash;
+
 	char req[] = TEST2_RECV_BUF;
 	str_pt recv_p;
 
@@ -275,6 +283,14 @@ void test6 (void)
 	assert (validate_req_base(&recv_p) == 0);
 
 	printf("test6: cp_str_head, set_payload_idx2, aes128_cbc_decrypt3, validate_req_base passed\n");
+
+	recv_p.str = (char *) test3;
+	esp_sha(SHA2_256, (unsigned char *) recv_p.str, REGISTER_ITEM_LEN*2, out);
+	printf("out '");
+	for (int i=0; i<32; i++) printf("%02x", out[i]);
+	printf("'\n");
+	printf("sha '4377225503e0929e435914a6894eeea02fabedf37a58d2a4a3c74f91550bcd9b'\n");
+	
 }
 
 int main(void)
@@ -285,4 +301,7 @@ int main(void)
 	test4();
 	test5();
 	test6();
+
+
+
 }

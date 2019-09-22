@@ -148,9 +148,11 @@ int validate_req_base(str_pt* str)
     return i;
 }
 
-int register_req(uint32_t *req_register, int *register_idx, const char* item)
+
+int register_req(uint32_t *req_register, int *register_idx, str_pt* str)
 {
     int pos;
+    unsigned char out[32];
     uint32_t hash;
 
     if (API_KEY_LEN != REGISTER_ITEM_LEN) {
@@ -158,14 +160,19 @@ int register_req(uint32_t *req_register, int *register_idx, const char* item)
         return -1;
     }
 
-    ESP_LOGI(TAG, "register_req item %s", item);
-    esp_sha(SHA2_256, (unsigned char *) item, REGISTER_ITEM_LEN, (unsigned char *) &hash);
-    ESP_LOGI(TAG, "register_req hash %ud", hash);
+    //for (int i=0; i< REGISTER_ITEM_LEN; i++) item[i] = (unsigned char) str->str[i];
+
+    ESP_LOGI(TAG, "register_req item %s", str->str);
+    esp_sha(SHA2_256, (unsigned char*) str->str, 2*REGISTER_ITEM_LEN, (unsigned char *) out);
+    ESP_LOGI(TAG, "register_req hash %s", out);
+
+    // TODO/ERROR
+    hash = *((uint32_t *) out);
 
     // reject API_KEY as invalid register item
     pos = REGISTER_ITEM_LEN;
     for (int i=0; i<REGISTER_ITEM_LEN; i++) {
-        if (item[i] == API_KEY[i]) pos--;
+        if (str->str[i] == API_KEY[i]) pos--;
     }
     if (pos == 0) return 1;
 
