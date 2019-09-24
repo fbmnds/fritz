@@ -23,7 +23,7 @@ static void tls_task(void *p)
     static char recv_buf_short[HTTP_RECV_BUF_SHORT_LEN];
     static char index_buf[HTTP_SERVER_ACK_1_BUFLEN];
 
-    static uint32_t req_register[REGISTER_LEN];
+    static char req_register[REGISTER_ITEM_LEN*REGISTER_LEN];
     int register_idx = -1;
 
     set_api_key();

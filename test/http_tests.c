@@ -48,6 +48,17 @@ static char recv_buf[HTTP_RECV_BUF_LEN];
 "xxxx-xxxx-xxxx;yyyy-yyyy-yyyy;1;on"
 
 #define TEST2_RECV_BUF_LEN strlen(TEST2_RECV_BUF)
+#define TEST2_RECV_BUF_DECRYPT_LEN strlen(TEST2_RECV_BUF_DECRYPT)
+
+#define TEST3_RECV_BUF \
+"POST /upload/test.txt HTTP/1.1\r\n" \
+"Content-Length: 123\r\n\r\n" \
+"%s\r\n"
+
+#define TEST3_RECV_BUF_DECRYPT \
+"POST /upload/test.txt HTTP/1.1\r\n" \
+"Content-Length: 123\r\n\r\n" \
+"%s"
 
 void test1(void)
 {
@@ -168,11 +179,8 @@ void test3 (void)
     // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx;1;on
     //     4    9    14   19   24   29
 
-void test4 (void)
+void test4 (const char* req, const char* req_decrypt)
 {
-	const char test_recv_buf[] = "xxxx-xxxx-xxxx;yyyy-yyyy-yyyy;1;on\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-	                           //     4    9    14   19   24   29
-	const char test[] = "262c6d8baa84549ac2a089d9825220a09f53955aa5f4fd9dca89785b39ebbd3b42af884c8bab89300f7ea122a9016f2f";
 	int in_len;
 	unsigned char out[320];
 	int out_len;
@@ -185,7 +193,7 @@ void test4 (void)
 	out_len = 320;
 	out2_len = 320;
 
-	in_len = strlen(test_recv_buf);
+	in_len = strlen(req_decrypt);
 	in_len = in_len + AES_KEY_SIZE - in_len%AES_KEY_SIZE;
 
 	assert(in_len == 48);
@@ -194,15 +202,17 @@ void test4 (void)
 	assert(out2_len % AES_KEY_SIZE == 0);
 	assert(out2_len>=sizeof(out2));
     
-    aes128_cbc_encrypt(test_recv_buf, in_len, out2, &out2_len);
+    aes128_cbc_encrypt(req_decrypt, in_len, out2, &out2_len);
 
     assert(out_len>2*in_len); /* with terminating '\0' */
-    for (int i=0; i<strlen(out2); i++) assert(out2[i] == test[i]);
+    //for (int i=0; i<strlen(req_decrypt); i++)  printf("%c", req_decrypt[i]);  printf("\n");
+    //for (int i=0; i<strlen(out2); i++) printf("%c", out2[i]); printf("\n");
+    for (int i=0; i<strlen(out2); i++) assert(out2[i] == req[i]);
 
     memset(out, 0, out_len);
     aes128_cbc_decrypt2(out2, out2_len, out);
     
-    for (int i=0; i<strlen(out); i++) assert(out[i] == test_recv_buf[i]);
+    for (int i=0; i<strlen(out); i++) assert(out[i] == req_decrypt[i]);
 
     printf("test4: aes128_cbc_encrypt, aes128_cbc_decrypt passed\n");
 }
@@ -286,11 +296,30 @@ void test6 (void)
 
 	recv_p.str = (char *) test3;
 	esp_sha(SHA2_256, (unsigned char *) recv_p.str, REGISTER_ITEM_LEN*2, out);
-	printf("out '");
-	for (int i=0; i<32; i++) printf("%02x", out[i]);
-	printf("'\n");
-	printf("sha '4377225503e0929e435914a6894eeea02fabedf37a58d2a4a3c74f91550bcd9b'\n");
-	
+	// printf("out '");
+	// for (int i=0; i<32; i++) printf("%02x", out[i]);
+	// printf("'\n");
+	// printf("sha '4377225503e0929e435914a6894eeea02fabedf37a58d2a4a3c74f91550bcd9b'\n");
+	printf("test6: SHA256 failed\n");
+}
+
+void test7(const char* req, const char* req_decrypt)
+{
+	char recv_buf[TEST2_RECV_BUF_LEN+1];
+	char recv_buf_decrypt[TEST2_RECV_BUF_DECRYPT_LEN+1];
+
+	const char recv_buf_2[] = TEST2_RECV_BUF;
+	const char recv_buf_decrypt_2[] = TEST2_RECV_BUF_DECRYPT;
+
+	memset(recv_buf, 0, TEST2_RECV_BUF_LEN+1);
+	sprintf(recv_buf,TEST3_RECV_BUF, req);
+	for (int i=0; i<TEST2_RECV_BUF_LEN+1; i++) assert(recv_buf[i] == recv_buf_2[i]);
+
+	memset(recv_buf_decrypt, 0, TEST2_RECV_BUF_DECRYPT_LEN+1);
+	sprintf(recv_buf_decrypt,TEST3_RECV_BUF_DECRYPT, req_decrypt);
+	for (int i=0; i<TEST2_RECV_BUF_DECRYPT_LEN+1; i++) assert(recv_buf_decrypt[i] == recv_buf_decrypt_2[i]);
+
+	printf("test7: passed\n");
 }
 
 int main(void)
@@ -298,10 +327,25 @@ int main(void)
 	test1();
 	test2();
 	test3();
-	test4();
+	const char req_decrypt[] = "xxxx-xxxx-xxxx;yyyy-yyyy-yyyy;1;on\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+	                           //   4    9    14   19   24   29
+	const char req[] = "262c6d8baa84549ac2a089d9825220a09f53955aa5f4fd9dca89785b39ebbd3b42af884c8bab89300f7ea122a9016f2f";
+	test4(req, req_decrypt);
+	const char req_decrypt_0[] = "0000-0000-0000;0000-0000-0000;1;on\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+	const char req_0[] = "a39f7dd2a1edd5bb6a20e87466429efa21fc4c53d3eb183d793fa991e6400e0363649b1f0953ff65d777b04162d2f97c";
+	test4(req_0, req_decrypt_0);
+	const char req_decrypt_1[] = "1111-1111-1111;0000-0000-0000;1;on\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+	const char req_1[] = "1e45fb4ee99101b2438cb5c33131f0fb62620bf3cbc461d2bd1c2ab69f91fc92740fc007465488df7915d1fb11e49512";
+	test4(req_1, req_decrypt_1);
+	const char req_decrypt_2[] = "2222-2222-2222;0000-0000-0000;1;on\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+	const char req_2[] = "5025d9a0a0b92bb4fc8bf39d688042bd432067def7ba9457caa32eff8ba9a5beb6c7fe88b9d71a6965651f7813be6d09";
+	test4(req_2, req_decrypt_2);
+	const char req_decrypt_3[] = "3333-3333-3333;0000-0000-0000;1;on\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+	const char req_3[] = "72d246bb9ffb87779b00989163ab6be3ad9865368bf664fb1249efff9e9a2e0151e84f8d3cceb0cf60929f7d166c3603";
+	test4(req_3, req_decrypt_3);
 	test5();
 	test6();
-
+	test7(req, req_decrypt);
 
 
 }

@@ -149,11 +149,11 @@ int validate_req_base(str_pt* str)
 }
 
 
-int register_req(uint32_t *req_register, int *register_idx, str_pt* str)
+int register_req(char* req_register, int *register_idx, str_pt* str)
 {
     int pos;
     unsigned char out[32];
-    uint32_t hash;
+    char* curr_item;
 
     if (API_KEY_LEN != REGISTER_ITEM_LEN) {
         ESP_LOGE(TAG, "register_req system error: API_KEY_LEN != REGISTER_ITEM_LEN");
@@ -162,12 +162,12 @@ int register_req(uint32_t *req_register, int *register_idx, str_pt* str)
 
     //for (int i=0; i< REGISTER_ITEM_LEN; i++) item[i] = (unsigned char) str->str[i];
 
-    ESP_LOGI(TAG, "register_req item %s", str->str);
-    esp_sha(SHA2_256, (unsigned char*) str->str, 2*REGISTER_ITEM_LEN, (unsigned char *) out);
-    ESP_LOGI(TAG, "register_req hash %s", out);
+    ESP_LOGI(TAG, "register_req: item %s", str->str);
+    //esp_sha(SHA2_256, (unsigned char*) str->str, 2*REGISTER_ITEM_LEN, (unsigned char *) out);
+    //ESP_LOGI(TAG, "register_req hash %s", out);
 
     // TODO/ERROR
-    hash = *((uint32_t *) out);
+    //hash = *((uint32_t *) out);
 
     // reject API_KEY as invalid register item
     pos = REGISTER_ITEM_LEN;
@@ -177,26 +177,28 @@ int register_req(uint32_t *req_register, int *register_idx, str_pt* str)
     if (pos == 0) return 1;
 
     for (pos=0; pos<=*register_idx; pos++) {
-        if (req_register[pos] == hash) break;
+        curr_item = &req_register[pos*REGISTER_ITEM_LEN];
+        // ignore replayed requests
+        if (cmp_str_head(curr_item, str) == 1) {
+        	ESP_LOGI(TAG, "register_req: pos %d", pos);
+        	return 1;
+        }
     }        
-    ESP_LOGI(TAG, "register_req pos %d", pos);
-
-    // ignore replayed requests
-    if (pos <= *register_idx) return 1;
 
     *register_idx += 1;
-    ESP_LOGI(TAG, "register_req *register_idx %d", *register_idx);
+    ESP_LOGI(TAG, "register_req: *register_idx %d", *register_idx);
 
     if (*register_idx == REGISTER_LEN) {
-        ESP_LOGI(TAG, "register_req refresh exhausted register");
-        for (pos=1; pos<REGISTER_LEN; pos++) req_register[pos] = 0;
-        req_register[0] = hash;
+        ESP_LOGI(TAG, "register_req: refresh exhausted register");
+        memset(req_register, 0, REGISTER_ITEM_LEN*REGISTER_LEN);
+        for (int i=0; i<REGISTER_ITEM_LEN; i++) req_register[i] = str->str[i];
         renew_api_key = true;
         return 0;
     } 
 
-    ESP_LOGI(TAG, "register_req register new request");
-    req_register[*register_idx] = hash;
+    ESP_LOGI(TAG, "register_req: register new request");
+    for (int i=0; i<REGISTER_ITEM_LEN; i++) req_register[*register_idx+i] = str->str[i];
+    //req_register[*register_idx] = hash;
     return 0;
 }
 

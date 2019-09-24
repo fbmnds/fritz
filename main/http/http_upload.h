@@ -41,7 +41,8 @@ int upload_fn (str_pt* fn, const char* recv_buf, const char* upload_url)
 }
 
 
-http_server_label_t post_upload(int new_sockfd, char* recv_buf, int ret)
+http_server_label_t post_upload(char* req_register, int* register_idx, 
+	                            int new_sockfd, char* recv_buf)
 {
 	static unsigned char recv_buf2[HTTP_RECV_BUF_LEN];
 	unsigned char* recv_buf_decr;
@@ -49,9 +50,6 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int ret)
 
 	char *temp_buf;
 	int in_len, idx;
-
-    static uint32_t req_register[REGISTER_LEN];
-    int register_idx = -1;
 
     temp_buf = strstr(recv_buf, "GET");
     if (temp_buf) {
@@ -95,7 +93,7 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int ret)
 
 
         for (int i=0; i<REGISTER_ITEM_LEN; i++) recv_p.str[i] = (char) recv_buf_decr[REGISTER_ITEM_POS + i];
-        if (register_req(req_register, &register_idx, &recv_p)) {
+        if (register_req(req_register, register_idx, &recv_p)) {
             ESP_LOGE(TAG, "HTTP register error: ignore request");
             ESP_LOGE(TAG, "%s", recv_buf);
             return _500;        
