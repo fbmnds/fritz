@@ -260,12 +260,9 @@ void test6 (void)
 	const char test2[] = "xxxx-xxxx-xxxx;yyyy-yyyy-yyyy;1;on";
 	const char test3[] = "xxxx-xxxx-xxxx";
 	unsigned char out[64];
-	uint32_t hash;
 
 	char req[] = TEST2_RECV_BUF;
 	str_pt recv_p;
-
-	int idx, in_len;
 
 	http_server_label_t ret;
 
@@ -303,23 +300,71 @@ void test6 (void)
 	printf("test6: SHA256 failed\n");
 }
 
-void test7(const char* req, const char* req_decrypt)
+void test7(void)
 {
-	char recv_buf[TEST2_RECV_BUF_LEN+1];
-	char recv_buf_decrypt[TEST2_RECV_BUF_DECRYPT_LEN+1];
+	const char req_decrypt[] = "xxxx-xxxx-xxxx;yyyy-yyyy-yyyy;1;on\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+	                           //   4    9    14   19   24   29
+	const char req[] = "262c6d8baa84549ac2a089d9825220a09f53955aa5f4fd9dca89785b39ebbd3b42af884c8bab89300f7ea122a9016f2f";
+
+	char recv_buf[HTTP_RECV_BUF_LEN];
+	char recv_buf_decrypt[HTTP_RECV_BUF_LEN];
 
 	const char recv_buf_2[] = TEST2_RECV_BUF;
 	const char recv_buf_decrypt_2[] = TEST2_RECV_BUF_DECRYPT;
 
-	memset(recv_buf, 0, TEST2_RECV_BUF_LEN+1);
+	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
 	sprintf(recv_buf,TEST3_RECV_BUF, req);
 	for (int i=0; i<TEST2_RECV_BUF_LEN+1; i++) assert(recv_buf[i] == recv_buf_2[i]);
 
-	memset(recv_buf_decrypt, 0, TEST2_RECV_BUF_DECRYPT_LEN+1);
+	memset(recv_buf_decrypt, 0, HTTP_RECV_BUF_LEN);
 	sprintf(recv_buf_decrypt,TEST3_RECV_BUF_DECRYPT, req_decrypt);
 	for (int i=0; i<TEST2_RECV_BUF_DECRYPT_LEN+1; i++) assert(recv_buf_decrypt[i] == recv_buf_decrypt_2[i]);
 
 	printf("test7: passed\n");
+}
+
+void test8(const char* req, const char* req_decrypt)
+{
+	char recv_buf[HTTP_RECV_BUF_LEN];
+	char recv_buf_decrypt[HTTP_RECV_BUF_LEN];
+	str_pt recv_p;
+
+	http_server_label_t ret;
+
+    static char req_register[REGISTER_ITEM_LEN*REGISTER_LEN];
+    int register_idx = -1;
+
+	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
+	sprintf(recv_buf,TEST3_RECV_BUF, req);
+
+	memset(recv_buf_decrypt, 0, HTTP_RECV_BUF_LEN);
+	sprintf(recv_buf_decrypt,TEST3_RECV_BUF_DECRYPT, req_decrypt);
+
+	recv_p.str = NULL;
+	recv_p.len = 0;	
+	ret = set_payload_idx2(&recv_p, recv_buf);
+	
+	//for (int i=0; i<strlen(recv_buf); i++) printf("%c", recv_buf[i]); printf("\n");
+
+	assert(ret == CONTINUE);
+	//for (int i=0; i<recv_p.len; i++) printf("%c", recv_p.str[i]); printf("\n");
+	//for (int i=0; i<strlen(req); i++) printf("%c", req[i]); printf("\n");
+	assert(recv_p.str[0] == req[0]);
+	assert(recv_p.len == strlen(req));
+	for (int i=0; i<recv_p.len; i++) assert(req[i] == recv_p.str[i]);
+
+	aes128_cbc_decrypt3(&recv_p, &recv_p);
+	
+	assert(strlen(recv_p.str) == strlen(req_decrypt));
+	for (int i=0; i<strlen(req_decrypt); i++) assert(req_decrypt[i] == recv_p.str[i]);
+
+	for (int i=0; i<strlen(recv_buf); i++) assert(recv_buf[i] == recv_buf_decrypt[i]);
+
+	assert (validate_req_base(&recv_p) == 0);
+
+	assert(register_req(req_register, &register_idx, &recv_p) == 0);
+
+	printf("test8: passed\n");
 }
 
 int main(void)
@@ -345,7 +390,10 @@ int main(void)
 	test4(req_3, req_decrypt_3);
 	test5();
 	test6();
-	test7(req, req_decrypt);
-
-
+	test7();
+	test8(req, req_decrypt);
+	test8(req_0, req_decrypt_0);
+	test8(req_1, req_decrypt_1);
+	test8(req_2, req_decrypt_2);
+	test8(req_3, req_decrypt_3);
 }

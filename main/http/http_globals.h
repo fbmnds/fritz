@@ -124,10 +124,11 @@ int validate_req(char* recv_buf, const unsigned char* recv_buf_decr)
     if (i < 30) return -1*i;
     if (recv_buf[4] != '-') return -4;
     if (recv_buf[9] != '-') return -9;
+    if (recv_buf[14] != ';') return -14;
     if (recv_buf[19] != '-') return -19;
     if (recv_buf[24] != '-') return -24;
-    if (recv_buf[14] != ';') return -14;
-    if (recv_buf[29] != ';') return -29;
+
+    //if (recv_buf[29] != ';') return -29;
     return i;
 }
 
@@ -156,18 +157,15 @@ int register_req(char* req_register, int *register_idx, str_pt* str)
     char* curr_item;
 
     if (API_KEY_LEN != REGISTER_ITEM_LEN) {
-        ESP_LOGE(TAG, "register_req system error: API_KEY_LEN != REGISTER_ITEM_LEN");
+        ESP_LOGE(TAG, " register_req system error: API_KEY_LEN != REGISTER_ITEM_LEN");
         return -1;
     }
 
     //for (int i=0; i< REGISTER_ITEM_LEN; i++) item[i] = (unsigned char) str->str[i];
 
-    ESP_LOGI(TAG, "register_req: item %s", str->str);
+    ESP_LOGI(TAG, " register_req: item %s", str->str);
     //esp_sha(SHA2_256, (unsigned char*) str->str, 2*REGISTER_ITEM_LEN, (unsigned char *) out);
     //ESP_LOGI(TAG, "register_req hash %s", out);
-
-    // TODO/ERROR
-    //hash = *((uint32_t *) out);
 
     // reject API_KEY as invalid register item
     pos = REGISTER_ITEM_LEN;
@@ -180,13 +178,13 @@ int register_req(char* req_register, int *register_idx, str_pt* str)
         curr_item = &req_register[pos*REGISTER_ITEM_LEN];
         // ignore replayed requests
         if (cmp_str_head(curr_item, str) == 1) {
-        	ESP_LOGI(TAG, "register_req: pos %d", pos);
+        	ESP_LOGI(TAG, " register_req: pos %d", pos);
         	return 1;
         }
     }        
 
     *register_idx += 1;
-    ESP_LOGI(TAG, "register_req: *register_idx %d", *register_idx);
+    ESP_LOGI(TAG, " register_req: *register_idx %d", *register_idx);
 
     if (*register_idx == REGISTER_LEN) {
         ESP_LOGI(TAG, "register_req: refresh exhausted register");
