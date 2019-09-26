@@ -194,7 +194,9 @@ int register_req(char* req_register, int *register_idx, str_pt* str)
         ESP_LOGI(TAG, " register_req: refresh exhausted register");
         memset(req_register, 0, REGISTER_ITEM_LEN*REGISTER_LEN);
         for (int i=0; i<REGISTER_ITEM_LEN; i++) req_register[i] = str->str[i];
+        *register_idx = 0;
         renew_api_key = true;
+        ESP_LOGI(TAG, " register_req: *register_idx %d", *register_idx);
         return 0;
     } 
 

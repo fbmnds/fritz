@@ -376,8 +376,8 @@ int main(void)
 	                           //   4    9    14   19   24   29
 	const char req[] = "262c6d8baa84549ac2a089d9825220a09f53955aa5f4fd9dca89785b39ebbd3b42af884c8bab89300f7ea122a9016f2f";
 	test4(req, req_decrypt);
-	const char req_decrypt_0[] = "0000-0000-0000;0000-0000-0000;1;on\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-	const char req_0[] = "a39f7dd2a1edd5bb6a20e87466429efa21fc4c53d3eb183d793fa991e6400e0363649b1f0953ff65d777b04162d2f97c";
+	char req_decrypt_0[] = "0000-0000-0000;0000-0000-0000;1;on\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+	char req_0[] = "a39f7dd2a1edd5bb6a20e87466429efa21fc4c53d3eb183d793fa991e6400e0363649b1f0953ff65d777b04162d2f97c";
 	test4(req_0, req_decrypt_0);
 	const char req_decrypt_1[] = "1111-1111-1111;0000-0000-0000;1;on\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 	const char req_1[] = "1e45fb4ee99101b2438cb5c33131f0fb62620bf3cbc461d2bd1c2ab69f91fc92740fc007465488df7915d1fb11e49512";
@@ -393,10 +393,28 @@ int main(void)
 	test7();
 	static char req_register[REGISTER_ITEM_LEN*REGISTER_LEN];
 	int register_idx = -1;	
+
 	test8(req_1, req_decrypt_1, req_register, &register_idx);
 	assert(register_idx == 0);
 	test8(req_2, req_decrypt_2, req_register, &register_idx);
 	assert(register_idx == 1);
 	test8(req_3, req_decrypt_3, req_register, &register_idx);
 	assert(register_idx == 2);
+
+	memset(req_register, 0, REGISTER_ITEM_LEN*REGISTER_LEN);
+	register_idx = -1;
+	str_pt str;
+	str.str = req_0;
+	str.len = 48;
+	req_decrypt_0[0] = '1'; 
+	for (int i=0; i<REGISTER_LEN+3; i++) {
+		req_decrypt_0[12] = '0' + i/10;
+		req_decrypt_0[13] = '0' + i%10;
+		printf("strlen(req_decrypt_0) %ld\n", strlen(req_decrypt_0));
+		aes128_cbc_encrypt(req_decrypt_0, 48, str.str, &str.len);
+		test8(req_0, req_decrypt_0, req_register, &register_idx);
+		assert(register_idx == i%REGISTER_LEN);
+	}
+
+
 }
