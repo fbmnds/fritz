@@ -6,7 +6,7 @@
 #define REGISTER_ITEM_LEN 14
 #define REGISTER_ITEM_POS 0
 
-#define HTTP_TASK_NAME        "HTTP"
+#define HTTP_TASK_NAME        "[HTTP]"
 #define HTTP_TASK_STACK_WORDS 10240
 #define HTTP_TASK_PRIORITY    5
 
@@ -191,14 +191,14 @@ int register_req(char* req_register, int *register_idx, str_pt* str)
     ESP_LOGI(TAG, " register_req: *register_idx %d", *register_idx);
 
     if (*register_idx == REGISTER_LEN) {
-        ESP_LOGI(TAG, "register_req: refresh exhausted register");
+        ESP_LOGI(TAG, " register_req: refresh exhausted register");
         memset(req_register, 0, REGISTER_ITEM_LEN*REGISTER_LEN);
         for (int i=0; i<REGISTER_ITEM_LEN; i++) req_register[i] = str->str[i];
         renew_api_key = true;
         return 0;
     } 
 
-    ESP_LOGI(TAG, "register_req: register new request");
+    ESP_LOGI(TAG, " register_req: register new request");
     for (int i=0; i<REGISTER_ITEM_LEN; i++) req_register[*register_idx+i] = str->str[i];
     //req_register[*register_idx] = hash;
     return 0;

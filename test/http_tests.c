@@ -323,7 +323,8 @@ void test7(void)
 	printf("test7: passed\n");
 }
 
-void test8(const char* req, const char* req_decrypt)
+void test8(const char* req, const char* req_decrypt,
+	       char* req_register, int* register_idx)
 {
 	char recv_buf[HTTP_RECV_BUF_LEN];
 	char recv_buf_decrypt[HTTP_RECV_BUF_LEN];
@@ -332,9 +333,6 @@ void test8(const char* req, const char* req_decrypt)
 	http_server_label_t ret;
 
 	sprintf(API_KEY, "0000-0000-0000");
-
-    static char req_register[REGISTER_ITEM_LEN*REGISTER_LEN];
-    int register_idx = -1;
 
 	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
 	sprintf(recv_buf,TEST3_RECV_BUF, req);
@@ -364,7 +362,7 @@ void test8(const char* req, const char* req_decrypt)
 
 	assert (validate_req_base(&recv_p) == 0);
 
-	//assert(register_req(req_register, &register_idx, &recv_p) == 0); // TODO
+	assert(register_req(req_register, register_idx, &recv_p) == 0); // TODO
 
 	printf("test8: passed\n");
 }
@@ -393,9 +391,12 @@ int main(void)
 	test5();
 	test6();
 	test7();
-	//test8(req, req_decrypt);
-	test8(req_0, req_decrypt_0);
-	test8(req_1, req_decrypt_1);
-	test8(req_2, req_decrypt_2);
-	test8(req_3, req_decrypt_3);
+	static char req_register[REGISTER_ITEM_LEN*REGISTER_LEN];
+	int register_idx = -1;	
+	test8(req_1, req_decrypt_1, req_register, &register_idx);
+	assert(register_idx == 0);
+	test8(req_2, req_decrypt_2, req_register, &register_idx);
+	assert(register_idx == 1);
+	test8(req_3, req_decrypt_3, req_register, &register_idx);
+	assert(register_idx == 2);
 }
