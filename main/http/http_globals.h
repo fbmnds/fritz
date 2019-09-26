@@ -201,7 +201,11 @@ int register_req(char* req_register, int *register_idx, str_pt* str)
     } 
 
     ESP_LOGI(TAG, " register_req: register new request");
-    for (int i=0; i<REGISTER_ITEM_LEN; i++) req_register[*register_idx+i] = str->str[i];
+    for (int i=0; i<REGISTER_ITEM_LEN; i++) {
+    	req_register[*register_idx*REGISTER_ITEM_LEN+i] = str->str[i];
+    	printf("%c", req_register[*register_idx+i]);
+    }
+    printf("\n");
     //req_register[*register_idx] = hash;
     return 0;
 }

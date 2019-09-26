@@ -414,6 +414,9 @@ int main(void)
 		aes128_cbc_encrypt(req_decrypt_0, 48, str.str, &str.len);
 		test8(req_0, req_decrypt_0, req_register, &register_idx);
 		assert(register_idx == i%REGISTER_LEN);
+		printf("(i%%REGISTER_LEN+1)*REGISTER_ITEM_LEN) %d\n", (i%REGISTER_LEN+1)*REGISTER_ITEM_LEN);
+		printf("strlen(req_register) %ld\n", strlen(req_register));
+	    assert(strlen(req_register) == (i%REGISTER_LEN+1)*REGISTER_ITEM_LEN);
 	}
 
 
