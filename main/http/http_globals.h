@@ -65,9 +65,13 @@ static const char *TAG = HTTP_TASK_NAME;
 // gpio_set_pull_mode(13, GPIO_PULLUP_ONLY);   // D3, needed in 4- and 1-line modes
 
 
-static const char rt_post_upload[] = "POST /upload/";
-static const char rt_post_set[]    = "POST /set/";
-static const char rt_post_status[] = "POST /status";
+static const char rt_post_upload_str[] = "POST /upload/";
+static const char rt_post_set_str[]    = "POST /set/";
+static const char rt_post_status_str[] = "POST /status";
+str_pt rt_post_upload = { .str = (char *)rt_post_upload_str, .len = 13 };
+str_pt rt_post_set    = { .str = (char *)rt_post_upload_str, .len = 10 };
+str_pt rt_post_status = { .str = (char *)rt_post_status_str, .len = 12 };
+
 
 typedef enum {
 	_200,
@@ -203,9 +207,9 @@ int register_req(char* req_register, int *register_idx, str_pt* str)
     ESP_LOGI(TAG, " register_req: register new request");
     for (int i=0; i<REGISTER_ITEM_LEN; i++) {
     	req_register[*register_idx*REGISTER_ITEM_LEN+i] = str->str[i];
-    	printf("%c", req_register[*register_idx+i]);
+    	//printf("%c", req_register[*register_idx*REGISTER_ITEM_LEN+i]);
     }
-    printf("\n");
+    //printf("\n");
     //req_register[*register_idx] = hash;
     return 0;
 }

@@ -2,25 +2,31 @@
 #define _HTTP_UPLOAD_H_
 
 #include <string.h>
+#include <stdio.h>
+
 
 #include "http_globals.h"
 
+static FILE* upload_file = NULL;
 
+static char UPLOAD_KEY[] = "____-____-____";
+static char UPLOAD_IV[]  = "____-____-____";
 
-static const char upload_url[]  = "POST /upload/";
-static const int  upload_url_len = 13;
-
-
-static str_pt fn = {
-    .str = NULL,
-    .len = 0
+#define UPLOAD_BUF_STR_LEN 256
+static char upload_buf_str[UPLOAD_BUF_STR_LEN];
+static str_pt upload_buf = {
+    .str = upload_buf_str,
+    .len = UPLOAD_BUF_STR_LEN
 };
 
-int upload_fn (str_pt* fn, const char* recv_buf, const char* upload_url)
+
+int get_upload_fn (str_pt* fn, const char* recv_buf)
 {
     char *ret;
     int idx;
 
+    return 0;
+/*
     ret = strstr(recv_buf, upload_url);
     if (ret) {
         fn->str = ret+upload_url_len*sizeof(char);
@@ -38,10 +44,10 @@ int upload_fn (str_pt* fn, const char* recv_buf, const char* upload_url)
         fn = NULL;
         return 1;
     }
+*/
 }
 
-
-http_server_label_t post_upload(char* req_register, int* register_idx, 
+http_server_label_t post_upload2(char* req_register, int* register_idx, 
 	                            int new_sockfd, char* recv_buf)
 {
 	static unsigned char recv_buf2[HTTP_RECV_BUF_LEN];
@@ -104,6 +110,53 @@ http_server_label_t post_upload(char* req_register, int* register_idx,
     if (temp_buf) {
         ESP_LOGI(TAG, "POST upload sequence");
     }
+    // else drop request
+    return DONE;
+}
+
+
+http_server_label_t post_upload(int new_sockfd, char* recv_buf, int ret)
+{
+	str_pt recv_p;
+
+	char *temp_buf;
+	int idx;
+
+    if (upload_file) return _500;
+
+    // validate API_KEY
+    recv_p.str = NULL;
+    recv_p.len = 0; 
+    switch (set_payload_idx2 (&recv_p, recv_buf)) {
+        case DONE: return DONE;
+        default:   break;
+    }
+
+    ESP_LOGI(TAG, "recv_buf encrypted %s", recv_p.str); // recv_p IS null terminated, as recv_buf is
+
+    aes128_cbc_decrypt3(&recv_p, &recv_p); // recv_p IS null terminated, being half as long as the encrypted string
+    
+    if (recv_p.str) {
+        ESP_LOGI(TAG, "decrypted %s", recv_p.str); 
+    }
+    
+    if (validate_req_base(&recv_p) < 0) {
+        ESP_LOGE(TAG, "HTTP validation error: ignore request");
+        ESP_LOGE(TAG, "%s", recv_buf);
+        return _500;        
+    }
+
+    // set UPLOAD_KEY
+    for (int i=0; i<API_KEY_LEN; i++) UPLOAD_KEY[i] = recv_p.str[i];
+
+    // get_upload_fn
+
+    // open fn
+
+    // generate IV
+
+    // 200, response
+
     // else drop request
     return DONE;
 }

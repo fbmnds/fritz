@@ -63,7 +63,7 @@ static char recv_buf[HTTP_RECV_BUF_LEN];
 void test1(void)
 {
 	str_pt fn;
-	int ret;
+
 	const char test[] = "test.txt";
 	const char test_recv_buf[] = TEST_RECV_BUF;
 	str_pt recv_p;
@@ -73,13 +73,7 @@ void test1(void)
 	recv_p.len = strlen(test_recv_buf);
 	cp_str_head(recv_buf, &recv_p);
 
-	ret = upload_fn (&fn, recv_buf, upload_url);
-
-	assert(ret == 0);
-	assert(fn.len == strlen(test));
-	for (int i=0; i<fn.len; i++) assert(test[i] == fn.str[i]);
-	assert(test[strlen(test)] == '\0');	
-	printf("test1: cp_str_head, upload_fn passed\n");
+	printf("test1: cp_str_head passed\n");
 }
 
 
@@ -367,6 +361,40 @@ void test8(const char* req, const char* req_decrypt,
 	printf("test8: passed\n");
 }
 
+void test9 (const char* req, const char* req_decrypt)
+{
+	char recv_buf[HTTP_RECV_BUF_LEN];
+	str_pt recv_p;
+
+	http_server_label_t ret;
+
+	sprintf(API_KEY, "0000-0000-0000");
+
+	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
+	sprintf(recv_buf,TEST3_RECV_BUF, req);
+
+
+	ret = post_upload(0, recv_buf, strlen(recv_buf));
+	//for (int i=0; i<out2_len; i++) printf("%c", out2[i]); printf("\n");
+    
+	assert(ret == DONE);
+	for (int i=0; i<API_KEY_LEN; i++) assert(UPLOAD_KEY[i] == req_decrypt[i]);
+	//for (int i=0; i<API_KEY_LEN; i++) printf("%c", UPLOAD_KEY[i]); printf("\n");
+
+	sprintf(API_KEY, "0000-0000-0001");
+
+	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
+	sprintf(recv_buf,TEST3_RECV_BUF, req);
+
+
+	ret = post_upload(0, recv_buf, strlen(recv_buf));
+	//for (int i=0; i<out2_len; i++) printf("%c", out2[i]); printf("\n");
+    
+	assert(ret == _500);
+
+    printf("test9: post_upload passed\n");	
+}
+
 int main(void)
 {
 	test1();
@@ -410,14 +438,14 @@ int main(void)
 	for (int i=0; i<REGISTER_LEN+3; i++) {
 		req_decrypt_0[12] = '0' + i/10;
 		req_decrypt_0[13] = '0' + i%10;
-		printf("strlen(req_decrypt_0) %ld\n", strlen(req_decrypt_0));
+		//printf("strlen(req_decrypt_0) %ld\n", strlen(req_decrypt_0));
 		aes128_cbc_encrypt(req_decrypt_0, 48, str.str, &str.len);
 		test8(req_0, req_decrypt_0, req_register, &register_idx);
 		assert(register_idx == i%REGISTER_LEN);
-		printf("(i%%REGISTER_LEN+1)*REGISTER_ITEM_LEN) %d\n", (i%REGISTER_LEN+1)*REGISTER_ITEM_LEN);
-		printf("strlen(req_register) %ld\n", strlen(req_register));
+		//printf("(i%%REGISTER_LEN+1)*REGISTER_ITEM_LEN) %d\n", (i%REGISTER_LEN+1)*REGISTER_ITEM_LEN);
+		//printf("strlen(req_register) %ld\n", strlen(req_register));
 	    assert(strlen(req_register) == (i%REGISTER_LEN+1)*REGISTER_ITEM_LEN);
 	}
-
+	test9(req_1, req_decrypt_1);
 
 }

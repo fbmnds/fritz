@@ -76,9 +76,7 @@ reconnect:
 
     if (ret < HTTP_RECV_MIN_LEN) goto done;
 
-    fn.str = (char *) rt_post_upload;
-    fn.len = strlen(rt_post_upload);
-    if (cmp_str_head(recv_buf, &fn)) {
+    if (cmp_str_head(recv_buf, &rt_post_upload)) {
         switch (post_upload(new_sockfd, recv_buf, ret)) {
             case _200: goto _200;
             case _500: goto _500;
@@ -93,7 +91,7 @@ reconnect:
         default:   break;
     }
 
-    ESP_LOGI(TAG, "recv_buf decrypted %s", recv_p.str); // recv_p IS null terminated, as recv_buf is
+    ESP_LOGI(TAG, "recv_buf encrypted %s", recv_p.str); // recv_p IS null terminated, as recv_buf is
 
     aes128_cbc_decrypt3(&recv_p, &recv_p); // recv_p IS null terminated, being half as long as the encrypted string
     
