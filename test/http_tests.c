@@ -60,6 +60,19 @@ static char recv_buf[HTTP_RECV_BUF_LEN];
 "Content-Length: 123\r\n\r\n" \
 "%s"
 
+#define TEST4_RECV_BUF \
+"POST /upload/%s HTTP/1.1\r\n" \
+"Content-Length: 123\r\n\r\n" \
+"%s\r\n"
+
+#define TEST4_RECV_BUF_DECRYPT \
+"POST /upload/%s HTTP/1.1\r\n" \
+"Content-Length: 123\r\n\r\n" \
+"%s"
+
+#define TEST_TXT "/test.txt"
+#define TEST_TXT_ENCR "dfd13cfc897eb9d35480179b3876cda5"
+
 void test1(void)
 {
 	str_pt fn;
@@ -368,11 +381,12 @@ void test9 (const char* req, const char* req_decrypt)
 
 	http_server_label_t ret;
 
-	sprintf(API_KEY, "0000-0000-0000");
-
 	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
-	sprintf(recv_buf,TEST3_RECV_BUF, req);
+	sprintf(recv_buf,TEST4_RECV_BUF, TEST_TXT_ENCR, req);
 
+
+	sprintf(SD_PREFIX, "%s", "./build");
+	assert(strlen(SD_PREFIX) <= SD_PREFIX_LEN);
 
 	ret = post_upload(0, recv_buf, strlen(recv_buf));
 	//for (int i=0; i<out2_len; i++) printf("%c", out2[i]); printf("\n");
@@ -385,7 +399,6 @@ void test9 (const char* req, const char* req_decrypt)
 
 	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
 	sprintf(recv_buf,TEST3_RECV_BUF, req);
-
 
 	ret = post_upload(0, recv_buf, strlen(recv_buf));
 	//for (int i=0; i<out2_len; i++) printf("%c", out2[i]); printf("\n");

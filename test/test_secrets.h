@@ -127,7 +127,7 @@ void aes128_cbc_decrypt2(const char *in, int in_len, char *out2)
 }
 
 
-void aes128_cbc_decrypt3(str_pt *in, str_pt *out)
+int aes128_cbc_decrypt3(str_pt *in, str_pt *out)
 {
     int ret;
     uint8_t *aes_hex_in_8;
@@ -138,7 +138,7 @@ void aes128_cbc_decrypt3(str_pt *in, str_pt *out)
 
     if (in->len%AES_KEY_SIZE) {
         ESP_LOGE("SECRET: ", "esp_aes_crypt_cbc aes_hex_in failed, in_len = %d", in->len);
-        return;
+        return -1;
     }
 
     aes_hex_in_8 = (uint8_t *) aes_hex_in;
@@ -157,7 +157,7 @@ void aes128_cbc_decrypt3(str_pt *in, str_pt *out)
     for (int i=0; i<=strlen(aes_hex_out) ; i++) out->str[i] = (char) aes_hex_out[i];
     out->len = strlen(out->str); 
 
-    return;    
+    return 0;    
 }
 
 #endif

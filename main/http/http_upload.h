@@ -12,12 +12,15 @@ static FILE* upload_file = NULL;
 static char UPLOAD_KEY[] = "____-____-____";
 static char UPLOAD_IV[]  = "____-____-____";
 
-#define UPLOAD_BUF_STR_LEN 256
-static char upload_buf_str[UPLOAD_BUF_STR_LEN];
-static str_pt upload_buf = {
-    .str = upload_buf_str,
-    .len = UPLOAD_BUF_STR_LEN
-};
+#define SD_PREFIX_LEN 7
+static char SD_PREFIX[] = "/sdcard";
+
+// #define UPLOAD_BUF_STR_LEN 256
+// static char upload_buf_str[UPLOAD_BUF_STR_LEN];
+// static str_pt upload_buf = {
+//     .str = upload_buf_str,
+//     .len = UPLOAD_BUF_STR_LEN
+// };
 
 
 int get_upload_fn (str_pt* fn, const char* recv_buf)
@@ -120,7 +123,7 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int ret)
 	str_pt recv_p;
 
 	char *temp_buf;
-	int idx;
+	int idx, prefix_len;
 
     if (upload_file) return _500;
 
@@ -150,9 +153,46 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int ret)
     for (int i=0; i<API_KEY_LEN; i++) UPLOAD_KEY[i] = recv_p.str[i];
 
     // get_upload_fn
+    idx = rt_post_upload.len;
+	recv_p.str = &recv_buf[idx];
+	recv_p.len = 0;
+    while ((recv_buf[idx] >= '0' && recv_buf[idx] <= '9') || 
+            (recv_buf[idx] >= 'a' && recv_buf[idx] <= 'f')) {
+    	idx++;
+        recv_p.len++;
+    } 
+
+    ESP_LOGI(TAG, "file for writing, encrypted: %s", recv_p.str);
+
+    if (aes128_cbc_decrypt3(&recv_p, &recv_p)) return _500;
+
+    ESP_LOGI(TAG, "file for writing, decrypted: %s", recv_p.str);
+
+    memset(&recv_buf[HTTP_RECV_BUF_SHORT_LEN], 0, HTTP_RECV_BUF_SHORT_LEN);
+    prefix_len = strlen(SD_PREFIX);
+
+    for (int i=0; i<prefix_len; i++) 
+    	recv_buf[HTTP_RECV_BUF_SHORT_LEN+i] = SD_PREFIX[i];
+    if (recv_p.str[0] != '/') {
+    	recv_buf[HTTP_RECV_BUF_SHORT_LEN+prefix_len] = '/'; 
+    	for (int i=0; i<recv_p.len; i++) recv_buf[HTTP_RECV_BUF_SHORT_LEN+prefix_len+i+1] = recv_p.str[i];
+    } else
+		for (int i=0; i<recv_p.len; i++) recv_buf[HTTP_RECV_BUF_SHORT_LEN+prefix_len+i] = recv_p.str[i];
+    
+    recv_p.str = &recv_buf[HTTP_RECV_BUF_SHORT_LEN];
+    recv_p.len = recv_p.len + AES_KEY_SIZE - recv_p.len%AES_KEY_SIZE;
 
     // open fn
+	ESP_LOGI(TAG, "file for writing, prefixed: %s", recv_p.str);
 
+    FILE* f = fopen(recv_p.str, "w");
+    if (f == NULL) {
+        ESP_LOGE(TAG, "Failed to open file for writing");
+        return _500;
+    }
+
+    fclose(f); // TODO
+    
     // generate IV
 
     // 200, response
