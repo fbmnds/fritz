@@ -7,8 +7,11 @@
 
 #define TEST 1
 
-#define ESP_LOGI(a, b, ...) printf("%s", a); printf(b, ##__VA_ARGS__);printf("\n")
-#define ESP_LOGE(a, b, ...) printf("%s", a); printf(b, ##__VA_ARGS__);printf("\n")
+#define ESP_LOGI(a, b, ...) printf("%s\n", a); printf(b, ##__VA_ARGS__)
+#define ESP_LOGE(a, b, ...) printf("%s\n", a); printf(b, ##__VA_ARGS__)
+
+#define p_green(b, ...) printf("\n\033[1;32m");printf(b, ##__VA_ARGS__);printf("\033[1;0m")
+#define p_red(b, ...)   printf("\n\033[1;31m");printf(b, ##__VA_ARGS__);printf("\033[1;0m")
 
 typedef struct str_p {
     char* str;
@@ -86,7 +89,7 @@ void test1(void)
 	recv_p.len = strlen(test_recv_buf);
 	cp_str_head(recv_buf, &recv_p);
 
-	printf("test1: cp_str_head passed\n");
+	p_green("test1: cp_str_head passed\n");
 }
 
 
@@ -112,10 +115,10 @@ void test2 (void)
     assert(idx == 55);
     assert(in_len == 16);
     for (int i=0; i<in_len; i++ ) assert(test[i] == recv_buf[idx+i]);
-    printf("test2: cp_str_head, set_payload_idx passed\n");
+    p_green("test2: cp_str_head, set_payload_idx passed\n");
     return;
 fail:
-	printf("idx = %d; in_len = %d, no payload\n", idx, in_len);
+	p_red("idx = %d; in_len = %d, no payload\n", idx, in_len);
 	assert(0 == 1);
 	return; 
 }
@@ -179,7 +182,7 @@ void test3 (void)
     // printf("'\n");
     
     for (int i=0; i<out2_len; i++) assert(out[i] == test_recv_buf[i]);
-    printf("test3: aes128_cbc_encrypt, aes128_cbc_decrypt passed\n");
+    p_green("test3: aes128_cbc_encrypt, aes128_cbc_decrypt passed\n");
 }
 
 
@@ -221,7 +224,7 @@ void test4 (const char* req, const char* req_decrypt)
     
     for (int i=0; i<strlen(out); i++) assert(out[i] == req_decrypt[i]);
 
-    printf("test4: aes128_cbc_encrypt, aes128_cbc_decrypt passed\n");
+    p_green("test4: aes128_cbc_encrypt, aes128_cbc_decrypt passed\n");
 }
 
 void test5 (void)
@@ -256,7 +259,7 @@ void test5 (void)
 	assert(strlen(recv_p.str) == strlen(test2));
 	for (int i=0; i<strlen(test2); i++) assert(test2[i] == recv_p.str[i]);
 
-	printf("test5: cp_str_head, set_payload_idx2, aes128_cbc_decrypt2 passed\n");
+	p_green("test5: cp_str_head, set_payload_idx2, aes128_cbc_decrypt2 passed\n");
 }
 
 void test6 (void)
@@ -296,7 +299,7 @@ void test6 (void)
 
 	assert (validate_req_base(&recv_p) == -15);
 
-	printf("test6: cp_str_head, set_payload_idx2, aes128_cbc_decrypt3, validate_req_base passed\n");
+	p_green("test6: cp_str_head, set_payload_idx2, aes128_cbc_decrypt3, validate_req_base passed\n");
 
 	recv_p.str = (char *) test3;
 	esp_sha(SHA2_256, (unsigned char *) recv_p.str, REGISTER_ITEM_LEN*2, out);
@@ -304,7 +307,7 @@ void test6 (void)
 	// for (int i=0; i<32; i++) printf("%02x", out[i]);
 	// printf("'\n");
 	// printf("sha '4377225503e0929e435914a6894eeea02fabedf37a58d2a4a3c74f91550bcd9b'\n");
-	printf("test6: SHA256 failed\n");
+	p_red("test6: SHA256 failed\n");
 }
 
 void test7(void)
@@ -327,7 +330,7 @@ void test7(void)
 	sprintf(recv_buf_decrypt,TEST3_RECV_BUF_DECRYPT, req_decrypt);
 	for (int i=0; i<TEST2_RECV_BUF_DECRYPT_LEN+1; i++) assert(recv_buf_decrypt[i] == recv_buf_decrypt_2[i]);
 
-	printf("test7: passed\n");
+	p_green("test7: passed\n");
 }
 
 void test8(const char* req, const char* req_decrypt,
@@ -371,7 +374,7 @@ void test8(const char* req, const char* req_decrypt,
 
 	assert(register_req(req_register, register_idx, &recv_p) == 0); // TODO
 
-	printf("test8: passed\n");
+	p_green("test8: passed\n");
 }
 
 void test9 (const char* req, const char* req_decrypt)
@@ -380,6 +383,19 @@ void test9 (const char* req, const char* req_decrypt)
 	str_pt recv_p;
 
 	http_server_label_t ret;
+
+
+	sprintf(API_KEY, "0000-0000-0001");
+
+	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
+	sprintf(recv_buf,TEST3_RECV_BUF, req);
+
+	ret = post_upload(0, recv_buf, strlen(recv_buf));
+	//for (int i=0; i<out2_len; i++) printf("%c", out2[i]); printf("\n");
+    
+	assert(ret == _500);
+
+	sprintf(API_KEY, "0000-0000-0000");
 
 	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
 	sprintf(recv_buf,TEST4_RECV_BUF, TEST_TXT_ENCR, req);
@@ -395,17 +411,9 @@ void test9 (const char* req, const char* req_decrypt)
 	for (int i=0; i<API_KEY_LEN; i++) assert(UPLOAD_KEY[i] == req_decrypt[i]);
 	//for (int i=0; i<API_KEY_LEN; i++) printf("%c", UPLOAD_KEY[i]); printf("\n");
 
-	sprintf(API_KEY, "0000-0000-0001");
 
-	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
-	sprintf(recv_buf,TEST3_RECV_BUF, req);
 
-	ret = post_upload(0, recv_buf, strlen(recv_buf));
-	//for (int i=0; i<out2_len; i++) printf("%c", out2[i]); printf("\n");
-    
-	assert(ret == _500);
-
-    printf("test9: post_upload passed\n");	
+    p_green("test9: post_upload passed\n");	
 }
 
 int main(void)
