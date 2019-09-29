@@ -42,15 +42,14 @@ void aes128_cbc_encrypt(const char *in, int in_len, char *out2, int *out2_len)
     //ESP_LOGI("SECRET: ", "aes128_cbc_encrypt i n_len2 = %ld\n%s\n", in_len2, in);
 
 	bzero(aes_hex_in, sizeof(aes_hex_in));
+
 	for (int i=0; i<in_len; i++) aes_hex_in[i] = (unsigned char) in[i];
 
     bzero(aes_hex_out, sizeof(aes_hex_out));
-	bzero(out2, *out2_len);
-
+	memset(out2, 0, *out2_len);
 
     AES_set_encrypt_key(secret_ctx.key, sizeof(secret_ctx.key)*8, &enc_key);
     AES_cbc_encrypt(aes_hex_in, aes_hex_out, sizeof(aes_hex_in), &enc_key, iv, AES_ENCRYPT);
-
 
 	for (size_t i=0; i<in_len2; i++) {
 		sprintf(out2+i*2, "%02x", aes_hex_out[i]);
@@ -65,67 +64,6 @@ uint8_t ctoi (char c)
     if (c >= 'a' && c <= 'f') return (uint8_t) (10 + c - 'a');
     return -1;
 }
-
-
-void aes128_cbc_decrypt(const char *in, int in_len, unsigned char *out2)
-{
-    int ret;
-    uint8_t *aes_hex_in_8;
-    unsigned char iv[] = IV;
-    AES_KEY dec_key;
-
-    if (in_len%AES_KEY_SIZE) {
-        ESP_LOGE("SECRET: ", "esp_aes_crypt_cbc aes_hex_in failed, in_len = %d", in_len);
-        return;
-    }
-
-    aes_hex_in_8 = (uint8_t *) aes_hex_in;
-    bzero(aes_hex_in, sizeof(aes_hex_in));
-    for (int i=0; i<in_len/2; i++) {
-        aes_hex_in_8[i] = ctoi(in[2*i])*16 + ctoi(in[2*i+1]);
-        //ESP_LOGI("SECRET: ", "aes_hex_in %x", (int) aes_hex_in_8[i]);
-    }
-
-    bzero(out2, in_len/2+1);
-    AES_set_decrypt_key(secret_ctx.key, sizeof(secret_ctx.key)*8, &dec_key); // Size of key is in bits
-    AES_cbc_encrypt(aes_hex_in, aes_hex_out, sizeof(aes_hex_in), &dec_key, iv, AES_DECRYPT);
-
-    /* copy with terminating '\0' */
-    for (int i=0; i<=strlen(aes_hex_out) ; i++) out2[i] = aes_hex_out[i]; 
-
-    return;    
-}
-
-
-void aes128_cbc_decrypt2(const char *in, int in_len, char *out2)
-{
-    int ret;
-    uint8_t *aes_hex_in_8;
-    unsigned char iv[] = IV;
-    AES_KEY dec_key;
-
-    if (in_len%AES_KEY_SIZE) {
-        ESP_LOGE("SECRET: ", "esp_aes_crypt_cbc aes_hex_in failed, in_len = %d", in_len);
-        return;
-    }
-
-    aes_hex_in_8 = (uint8_t *) aes_hex_in;
-    bzero(aes_hex_in, sizeof(aes_hex_in));
-    for (int i=0; i<in_len/2; i++) {
-        aes_hex_in_8[i] = ctoi(in[2*i])*16 + ctoi(in[2*i+1]);
-        //ESP_LOGI("SECRET: ", "aes_hex_in %x", (int) aes_hex_in_8[i]);
-    }
-
-    bzero(out2, in_len);
-    AES_set_decrypt_key(secret_ctx.key, sizeof(secret_ctx.key)*8, &dec_key); // Size of key is in bits
-    AES_cbc_encrypt(aes_hex_in, aes_hex_out, sizeof(aes_hex_in), &dec_key, iv, AES_DECRYPT);
-
-    /* copy with terminating '\0' */
-    for (int i=0; i<=strlen(aes_hex_out) ; i++) out2[i] = (char) aes_hex_out[i]; 
-
-    return;    
-}
-
 
 int aes128_cbc_decrypt3(str_pt *in, str_pt *out)
 {

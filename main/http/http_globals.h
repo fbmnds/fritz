@@ -143,7 +143,6 @@ int validate_req_base(str_pt* str)
     // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx;x;off
     // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx
     str_pt s;
-    int i = 0;
     if (str->len < 30) return -1;
     if (str->str[4] != '-') return -4;
     if (str->str[9] != '-') return -9;
@@ -161,7 +160,7 @@ int validate_req_base(str_pt* str)
 int register_req(char* req_register, int *register_idx, str_pt* str)
 {
     int pos;
-    unsigned char out[32];
+    //unsigned char out[32];
     char* curr_item;
 
     if (API_KEY_LEN != REGISTER_ITEM_LEN) {
@@ -182,6 +181,12 @@ int register_req(char* req_register, int *register_idx, str_pt* str)
     }
     if (pos == 0) return 1;
 
+    if (*register_idx == 0) {
+    	for (int i=0; i<REGISTER_ITEM_LEN; i++) req_register[i]=str->str[i];
+    	*register_idx = 1;
+    	return 0;
+    }
+
     for (pos=0; pos<=*register_idx; pos++) {
         curr_item = &req_register[pos*REGISTER_ITEM_LEN];
         // ignore replayed requests
@@ -191,14 +196,13 @@ int register_req(char* req_register, int *register_idx, str_pt* str)
         }
     }        
 
-    *register_idx += 1;
     ESP_LOGI(TAG, " register_req: *register_idx %d", *register_idx);
 
     if (*register_idx == REGISTER_LEN) {
         ESP_LOGI(TAG, " register_req: refresh exhausted register");
         memset(req_register, 0, REGISTER_ITEM_LEN*REGISTER_LEN);
         for (int i=0; i<REGISTER_ITEM_LEN; i++) req_register[i] = str->str[i];
-        *register_idx = 0;
+        (*register_idx) = 1;
         renew_api_key = true;
         ESP_LOGI(TAG, " register_req: *register_idx %d", *register_idx);
         return 0;
@@ -207,9 +211,11 @@ int register_req(char* req_register, int *register_idx, str_pt* str)
     ESP_LOGI(TAG, " register_req: register new request");
     for (int i=0; i<REGISTER_ITEM_LEN; i++) {
     	req_register[*register_idx*REGISTER_ITEM_LEN+i] = str->str[i];
-    	//printf("%c", req_register[*register_idx*REGISTER_ITEM_LEN+i]);
+    	printf("%c", req_register[*register_idx*REGISTER_ITEM_LEN+i]);
     }
-    //printf("\n");
+    req_register[*register_idx*(REGISTER_ITEM_LEN*2)] = '\0';
+    *register_idx += 1;
+    printf("\n");
     //req_register[*register_idx] = hash;
     return 0;
 }

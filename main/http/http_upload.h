@@ -23,106 +23,79 @@ static char SD_PREFIX[] = "/sdcard";
 // };
 
 
-int get_upload_fn (str_pt* fn, const char* recv_buf)
-{
-    char *ret;
-    int idx;
+// http_server_label_t post_upload2(char* req_register, int* register_idx, 
+// 	                            int new_sockfd, char* recv_buf)
+// {
+// 	static unsigned char recv_buf2[HTTP_RECV_BUF_LEN];
+// 	unsigned char* recv_buf_decr;
+// 	str_pt recv_p;
 
-    return 0;
-/*
-    ret = strstr(recv_buf, upload_url);
-    if (ret) {
-        fn->str = ret+upload_url_len*sizeof(char);
-        fn->len = 0;
-        idx = upload_url_len;
-        while (ret[idx] != '\0' &&
-               ret[idx] != '\r' &&
-               ret[idx] != '\n' &&
-               ret[idx] != ' ') {
-            idx++;
-            fn->len++;
-        }
-        return 0;
-    } else {
-        fn = NULL;
-        return 1;
-    }
-*/
-}
+// 	char *temp_buf;
+// 	int in_len, idx;
 
-http_server_label_t post_upload2(char* req_register, int* register_idx, 
-	                            int new_sockfd, char* recv_buf)
-{
-	static unsigned char recv_buf2[HTTP_RECV_BUF_LEN];
-	unsigned char* recv_buf_decr;
-	str_pt recv_p;
+//     temp_buf = strstr(recv_buf, "GET");
+//     if (temp_buf) {
+//         ESP_LOGI(TAG, "GET upload: initial call");
 
-	char *temp_buf;
-	int in_len, idx;
+//         // TODO eliminate duplicated code
+//         in_len = 0;
+//         idx = HTTP_RECV_BUF_LEN;
+//         while (--idx) {
+//             if (recv_buf[idx] == '\r' || recv_buf[idx] == '\n') recv_buf[idx] = '\0';
+//             if (recv_buf[idx] != '\0' && recv_buf[idx] != '\r' && recv_buf[idx] != '\n') break;
+//         }
+//         while (idx) {
+//             if ((recv_buf[idx] >= '0' && recv_buf[idx] <= '9') || 
+//                 (recv_buf[idx] >= 'a' && recv_buf[idx] <= 'f')) {
+//                 idx--; 
+//                 in_len++;
+//             } else 
+//                 break;
+//         }
+//         if (in_len) idx++;
+//         if (!idx) {
+//             ESP_LOGE(TAG, "HTTP read: ignore request");
+//             ESP_LOGE(TAG, "%s", recv_buf);        
+//             return DONE;
+//         }
 
-    temp_buf = strstr(recv_buf, "GET");
-    if (temp_buf) {
-        ESP_LOGI(TAG, "GET upload: initial call");
+//         memset(recv_buf2, 0, HTTP_RECV_BUF_LEN);
+//         recv_buf_decr = recv_buf2;
+//         aes128_cbc_decrypt(&recv_buf[idx], in_len, recv_buf_decr);
+//         if (recv_buf_decr) {
+//             ESP_LOGI(TAG, "decrypted %s", recv_buf_decr); 
+//         }
 
-        // TODO eliminate duplicated code
-        in_len = 0;
-        idx = HTTP_RECV_BUF_LEN;
-        while (--idx) {
-            if (recv_buf[idx] == '\r' || recv_buf[idx] == '\n') recv_buf[idx] = '\0';
-            if (recv_buf[idx] != '\0' && recv_buf[idx] != '\r' && recv_buf[idx] != '\n') break;
-        }
-        while (idx) {
-            if ((recv_buf[idx] >= '0' && recv_buf[idx] <= '9') || 
-                (recv_buf[idx] >= 'a' && recv_buf[idx] <= 'f')) {
-                idx--; 
-                in_len++;
-            } else 
-                break;
-        }
-        if (in_len) idx++;
-        if (!idx) {
-            ESP_LOGE(TAG, "HTTP read: ignore request");
-            ESP_LOGE(TAG, "%s", recv_buf);        
-            return DONE;
-        }
-
-        memset(recv_buf2, 0, HTTP_RECV_BUF_LEN);
-        recv_buf_decr = recv_buf2;
-        aes128_cbc_decrypt(&recv_buf[idx], in_len, recv_buf_decr);
-        if (recv_buf_decr) {
-            ESP_LOGI(TAG, "decrypted %s", recv_buf_decr); 
-        }
-
-        in_len = validate_req(recv_buf, recv_buf_decr);
-        if (in_len < 0) {
-            ESP_LOGE(TAG, "HTTP validation error: ignore request");
-            ESP_LOGE(TAG, "%s", recv_buf);
-            return _500;        
-        }        
+//         in_len = validate_req(recv_buf, recv_buf_decr);
+//         if (in_len < 0) {
+//             ESP_LOGE(TAG, "HTTP validation error: ignore request");
+//             ESP_LOGE(TAG, "%s", recv_buf);
+//             return _500;        
+//         }        
 
 
-        for (int i=0; i<REGISTER_ITEM_LEN; i++) recv_p.str[i] = (char) recv_buf_decr[REGISTER_ITEM_POS + i];
-        if (register_req(req_register, register_idx, &recv_p)) {
-            ESP_LOGE(TAG, "HTTP register error: ignore request");
-            ESP_LOGE(TAG, "%s", recv_buf);
-            return _500;        
-        }        
+//         for (int i=0; i<REGISTER_ITEM_LEN; i++) recv_p.str[i] = (char) recv_buf_decr[REGISTER_ITEM_POS + i];
+//         if (register_req(req_register, register_idx, &recv_p)) {
+//             ESP_LOGE(TAG, "HTTP register error: ignore request");
+//             ESP_LOGE(TAG, "%s", recv_buf);
+//             return _500;        
+//         }        
 
-        // TODO return 200, permitt-token
-    }
-    if (temp_buf) {
-        ESP_LOGI(TAG, "POST upload sequence");
-    }
-    // else drop request
-    return DONE;
-}
+//         // TODO return 200, permitt-token
+//     }
+//     if (temp_buf) {
+//         ESP_LOGI(TAG, "POST upload sequence");
+//     }
+//     // else drop request
+//     return DONE;
+// }
 
 
 http_server_label_t post_upload(int new_sockfd, char* recv_buf, int ret)
 {
 	str_pt recv_p;
 
-	char *temp_buf;
+	//char *temp_buf;
 	int idx, prefix_len;
 
     if (upload_file) return _500;
@@ -190,8 +163,6 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int ret)
         ESP_LOGE(TAG, "Failed to open file for writing");
         return _500;
     }
-
-    fclose(f); // TODO
     
     // generate IV
 

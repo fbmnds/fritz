@@ -7,9 +7,14 @@
 
 #define TEST 1
 
-#define ESP_LOGI(a, b, ...) printf("%s\n", a); printf(b, ##__VA_ARGS__)
-#define ESP_LOGE(a, b, ...) printf("%s\n", a); printf(b, ##__VA_ARGS__)
-
+#define VERBOSE 1
+#ifdef  VERBOSE
+#define ESP_LOGI(a, b, ...) printf("%s", a); printf(b, ##__VA_ARGS__);printf("\n")
+#define ESP_LOGE(a, b, ...) printf("%s", a); printf(b, ##__VA_ARGS__);printf("\n")
+#else
+#define ESP_LOGI(a, b, ...) 
+#define ESP_LOGE(a, b, ...) 
+#endif
 #define p_green(b, ...) printf("\n\033[1;32m");printf(b, ##__VA_ARGS__);printf("\033[1;0m")
 #define p_red(b, ...)   printf("\n\033[1;31m");printf(b, ##__VA_ARGS__);printf("\033[1;0m")
 
@@ -123,67 +128,67 @@ fail:
 	return; 
 }
 
-void test3 (void)
-{
-	char test_recv_buf[TEST_RECV_BUF_MAX_LEN];
-	const char test2[] = TEST_RECV_BUF;
-	str_pt recv_p;
-	int in_len, test2_len, mod_key_size;
-	unsigned char out[160];
-	int out_len;
+// void test3 (void)
+// {
+// 	char test_recv_buf[TEST_RECV_BUF_MAX_LEN];
+// 	const char test2[] = TEST_RECV_BUF;
+// 	str_pt recv_p;
+// 	int in_len, test2_len, mod_key_size;
+// 	unsigned char out[160];
+// 	int out_len;
 
-	char out2[320];
-	int out2_len;
+// 	char out2[320];
+// 	int out2_len;
 
-	out_len = 160;
-	out2_len = 320;
+// 	out_len = 160;
+// 	out2_len = 320;
 
-	test2_len = strlen(test2);
+// 	test2_len = strlen(test2);
 
-	mod_key_size = test2_len % AES_KEY_SIZE;	
+// 	mod_key_size = test2_len % AES_KEY_SIZE;	
 
-	assert(TEST_RECV_BUF_MAX_LEN >= (test2_len + AES_KEY_SIZE - mod_key_size));
+// 	assert(TEST_RECV_BUF_MAX_LEN >= (test2_len + AES_KEY_SIZE - mod_key_size));
 
-	memset(test_recv_buf, 0, TEST_RECV_BUF_MAX_LEN);
-	recv_p.str = (char *) test2;
-	recv_p.len = test2_len;
-	cp_str_head(test_recv_buf, &recv_p);
-	if (mod_key_size) 
-		test2_len = test2_len + AES_KEY_SIZE - mod_key_size;
+// 	memset(test_recv_buf, 0, TEST_RECV_BUF_MAX_LEN);
+// 	recv_p.str = (char *) test2;
+// 	recv_p.len = test2_len;
+// 	cp_str_head(test_recv_buf, &recv_p);
+// 	if (mod_key_size) 
+// 		test2_len = test2_len + AES_KEY_SIZE - mod_key_size;
 
-	assert(test2_len == 80);
-	assert(out2_len >= 2*test2_len);
-	assert(out2_len % AES_KEY_SIZE == 0);
-	assert(out2_len <= sizeof(out2));
+// 	assert(test2_len == 80);
+// 	assert(out2_len >= 2*test2_len);
+// 	assert(out2_len % AES_KEY_SIZE == 0);
+// 	assert(out2_len <= sizeof(out2));
 
-    aes128_cbc_encrypt(test_recv_buf, test2_len, out2, &out2_len);
+//     aes128_cbc_encrypt(test_recv_buf, test2_len, out2, &out2_len);
 
 
-    // printf("test_recv_buf[0] %2x\n", test_recv_buf[0]);
-    // printf("'");
-    // for (int i=0; i<test2_len; i++) 
-    // 	printf("%c", test_recv_buf[i]);
-    // printf("'\n");	    
+//     // printf("test_recv_buf[0] %2x\n", test_recv_buf[0]);
+//     // printf("'");
+//     // for (int i=0; i<test2_len; i++) 
+//     // 	printf("%c", test_recv_buf[i]);
+//     // printf("'\n");	    
 
     
-    // printf("'");
-    // for (int i=0; i<out2_len; i++) 
-    // 	printf("%c", out2[i]);
-    // printf("'\n");	
+//     // printf("'");
+//     // for (int i=0; i<out2_len; i++) 
+//     // 	printf("%c", out2[i]);
+//     // printf("'\n");	
     
-    assert(out_len>2*in_len); /* with terminating '\0' */
+//     assert(out_len>2*in_len); /* with terminating '\0' */
 
-    memset(out, 0, out_len);
-    aes128_cbc_decrypt2(out2, out2_len, out);
+//     memset(out, 0, out_len);
+//     aes128_cbc_decrypt2(out2, out2_len, out);
     
-    // printf("'");
-    // for (int i=0; i<strlen(out); i++) 
-    // 	printf("%c", out[i]);
-    // printf("'\n");
+//     // printf("'");
+//     // for (int i=0; i<strlen(out); i++) 
+//     // 	printf("%c", out[i]);
+//     // printf("'\n");
     
-    for (int i=0; i<out2_len; i++) assert(out[i] == test_recv_buf[i]);
-    p_green("test3: aes128_cbc_encrypt, aes128_cbc_decrypt passed\n");
-}
+//     for (int i=0; i<out2_len; i++) assert(out[i] == test_recv_buf[i]);
+//     p_green("test3: aes128_cbc_encrypt, aes128_cbc_decrypt passed\n");
+// }
 
 
     // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx;1;on
@@ -192,37 +197,35 @@ void test3 (void)
 void test4 (const char* req, const char* req_decrypt)
 {
 	int in_len;
-	unsigned char out[320];
-	int out_len;
+	unsigned char out_str[320];
+	str_pt out = { .str = out_str, .len = 320 };
 
-	char out2[320];
-	int out2_len;
+	char out2_str[320];
+	str_pt out2 = { .str = out2_str, .len = 320 };
 
 	int ret;
-
-	out_len = 320;
-	out2_len = 320;
 
 	in_len = strlen(req_decrypt);
 	in_len = in_len + AES_KEY_SIZE - in_len%AES_KEY_SIZE;
 
 	assert(in_len == 48);
 
-	assert(out2_len>=2*in_len);
-	assert(out2_len % AES_KEY_SIZE == 0);
-	assert(out2_len>=sizeof(out2));
+	assert(out2.len>=2*in_len);
+	assert(out2.len % AES_KEY_SIZE == 0);
+	assert(out2.len>=sizeof(out2));
     
-    aes128_cbc_encrypt(req_decrypt, in_len, out2, &out2_len);
+    aes128_cbc_encrypt(req_decrypt, in_len, out2.str, &out2.len);
 
-    assert(out_len>2*in_len); /* with terminating '\0' */
-    //for (int i=0; i<strlen(req_decrypt); i++)  printf("%c", req_decrypt[i]);  printf("\n");
-    //for (int i=0; i<strlen(out2); i++) printf("%c", out2[i]); printf("\n");
-    for (int i=0; i<strlen(out2); i++) assert(out2[i] == req[i]);
+    assert(out.len>2*in_len); /* with terminating '\0' */
+    for (int i=0; i<strlen(req_decrypt); i++)  printf("%c", req_decrypt[i]);  printf("\n");
+    for (int i=0; i<strlen(out2.str); i++) printf("%c", out2.str[i]); printf("\n");
+    for (int i=0; i<out2.len; i++) assert(out2.str[i] == req[i]);
 
-    memset(out, 0, out_len);
-    aes128_cbc_decrypt2(out2, out2_len, out);
-    
-    for (int i=0; i<strlen(out); i++) assert(out[i] == req_decrypt[i]);
+    memset(out.str, 0, out.len);
+    aes128_cbc_decrypt3(&out2, &out);
+    printf("in_len %d out.len %d\n", in_len, out.len);
+    assert(in_len >= out.len);
+    for (int i=0; i<out.len; i++) assert(out.str[i] == req_decrypt[i]);
 
     p_green("test4: aes128_cbc_encrypt, aes128_cbc_decrypt passed\n");
 }
@@ -254,7 +257,7 @@ void test5 (void)
 	assert(recv_p.len == strlen(test));
 	for (int i=0; i<recv_p.len; i++) assert(test[i] == recv_p.str[i]);
 
-	aes128_cbc_decrypt2(recv_p.str, recv_p.len, recv_p.str);
+	aes128_cbc_decrypt3(&recv_p, &recv_p);
 	
 	assert(strlen(recv_p.str) == strlen(test2));
 	for (int i=0; i<strlen(test2); i++) assert(test2[i] == recv_p.str[i]);
@@ -342,6 +345,8 @@ void test8(const char* req, const char* req_decrypt,
 
 	http_server_label_t ret;
 
+	int rc;
+
 	sprintf(API_KEY, "0000-0000-0000");
 
 	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
@@ -372,7 +377,8 @@ void test8(const char* req, const char* req_decrypt,
 
 	assert (validate_req_base(&recv_p) == 0);
 
-	assert(register_req(req_register, register_idx, &recv_p) == 0); // TODO
+	rc = register_req(req_register, register_idx, &recv_p);
+	assert(rc == 0);
 
 	p_green("test8: passed\n");
 }
@@ -420,7 +426,7 @@ int main(void)
 {
 	test1();
 	test2();
-	test3();
+	//test3();
 	const char req_decrypt[] = "xxxx-xxxx-xxxx;yyyy-yyyy-yyyy;1;on\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 	                           //   4    9    14   19   24   29
 	const char req[] = "262c6d8baa84549ac2a089d9825220a09f53955aa5f4fd9dca89785b39ebbd3b42af884c8bab89300f7ea122a9016f2f";
@@ -440,32 +446,45 @@ int main(void)
 	test5();
 	test6();
 	test7();
-	static char req_register[REGISTER_ITEM_LEN*REGISTER_LEN];
-	int register_idx = -1;	
+	static char req_register[REGISTER_ITEM_LEN*REGISTER_LEN+1];
+	int register_idx = 0;	
 
 	test8(req_1, req_decrypt_1, req_register, &register_idx);
-	assert(register_idx == 0);
-	test8(req_2, req_decrypt_2, req_register, &register_idx);
 	assert(register_idx == 1);
-	test8(req_3, req_decrypt_3, req_register, &register_idx);
+	test8(req_2, req_decrypt_2, req_register, &register_idx);
 	assert(register_idx == 2);
+	test8(req_3, req_decrypt_3, req_register, &register_idx);
+	assert(register_idx == 3);
 
 	memset(req_register, 0, REGISTER_ITEM_LEN*REGISTER_LEN);
-	register_idx = -1;
+	register_idx = 0;
 	str_pt str;
 	str.str = req_0;
 	str.len = 48;
 	req_decrypt_0[0] = '1'; 
-	for (int i=0; i<REGISTER_LEN+3; i++) {
+	for (int i=0; i<2*REGISTER_LEN+3; i++) {
+		req_decrypt_0[11] = '0' + i/100;
 		req_decrypt_0[12] = '0' + i/10;
 		req_decrypt_0[13] = '0' + i%10;
 		//printf("strlen(req_decrypt_0) %ld\n", strlen(req_decrypt_0));
 		aes128_cbc_encrypt(req_decrypt_0, 48, str.str, &str.len);
 		test8(req_0, req_decrypt_0, req_register, &register_idx);
-		assert(register_idx == i%REGISTER_LEN);
-		//printf("(i%%REGISTER_LEN+1)*REGISTER_ITEM_LEN) %d\n", (i%REGISTER_LEN+1)*REGISTER_ITEM_LEN);
-		//printf("strlen(req_register) %ld\n", strlen(req_register));
-	    assert(strlen(req_register) == (i%REGISTER_LEN+1)*REGISTER_ITEM_LEN);
+		if (i == 0) 
+			assert(register_idx == 1);
+		else {
+			//printf("i %d register_idx %d \n", i, register_idx);
+			assert(register_idx == i%REGISTER_LEN+1);
+		}         
+		printf("(i%%REGISTER_LEN+1)*REGISTER_ITEM_LEN) %d\n", (i%REGISTER_LEN+1)*REGISTER_ITEM_LEN);
+		printf("strlen(req_register) %ld\n", strlen(req_register));
+		assert(req_register[REGISTER_LEN*REGISTER_LEN] == '\0');
+
+	    if (64 == i) {
+				printf("i %d register_idx %d \n", i, register_idx);
+				assert(strlen(req_register) == REGISTER_ITEM_LEN);
+		}  else {
+		    assert(strlen(req_register) == (i%REGISTER_LEN+1)*REGISTER_ITEM_LEN);
+		}
 	}
 	test9(req_1, req_decrypt_1);
 
