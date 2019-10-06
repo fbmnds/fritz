@@ -1,6 +1,9 @@
 #ifndef _TEST_SECRETS_H_
 #define _TEST_SECRETS_H_
 
+#include <time.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <openssl/aes.h>
 
 #define AES_ENCRYPT     1
@@ -11,7 +14,10 @@
 #define AES_KEY_SIZE        16
 
 #define API_KEY_LEN 14
+#define API_KEY_LEN_m2 12
 static char API_KEY[]      = "0000-0000-0000";
+static char cs[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+static int cs_len = 36;
 
 #define IV {0xFF,0xEE,0xDD,0xCC,0xBB,0xAA,0x99,0x88,0x77,0x66,0x55,0x44,0x33,0x22,0x11,0x00}
 
@@ -19,6 +25,26 @@ typedef struct {
     uint8_t key_bytes;
     uint8_t key[32];
 } esp_aes_context;
+
+static void esp_fill_random(char *s, int len)
+{
+    time_t t;
+    srand((unsigned) time(&t));
+    for (int i=0; i < len; i++) s[i] = (unsigned char) rand();
+}
+
+#define close(f) fclose(f)
+#define write(x,y,z) 1
+
+static void set_iv(char* s) {
+    unsigned char buf[API_KEY_LEN_m2];
+    esp_fill_random(buf, API_KEY_LEN_m2);
+    for (int i=0; i<4; i++)  s[i]   = cs[buf[i]%cs_len];
+    for (int i=4; i<8; i++)  s[i+1] = cs[buf[i]%cs_len];
+    for (int i=8; i<12; i++) s[i+2] = cs[buf[i]%cs_len];
+    ESP_LOGI("secret", "IV %s", s);
+    
+}
 
 static esp_aes_context secret_ctx = {
     .key_bytes = AES_KEY_SIZE,

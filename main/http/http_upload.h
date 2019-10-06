@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 
+
 #include "http_globals.h"
 
 static FILE* upload_file = NULL;
@@ -94,7 +95,7 @@ static char SD_PREFIX[] = "/sdcard";
 http_server_label_t post_upload(int new_sockfd, char* recv_buf, int ret)
 {
 	str_pt recv_p;
-
+	char iv[API_KEY_LEN];
 	//char *temp_buf;
 	int idx, prefix_len;
 
@@ -165,11 +166,46 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int ret)
     }
     
     // generate IV
+    if (strlen(UPLOAD_IV) != API_KEY_LEN) {
+        ESP_LOGE(TAG, "UPLOAD_IV configuration error");
+        return _500;   	
+    }
+    set_iv(UPLOAD_IV);
+
+    // build encrypted response
+    memset(&recv_buf[0], 0, HTTP_RECV_BUF_SHORT_LEN);
+    for (int i=0; i<API_KEY_LEN; i++) recv_buf[i] = UPLOAD_IV[i];
+    recv_buf[API_KEY_LEN] = ';';
+	for (int i=API_KEY_LEN+1; i<2*API_KEY_LEN+1; i++) recv_buf[i] = UPLOAD_KEY[i-API_KEY_LEN-1];
+	ESP_LOGI(TAG, "response '%s'", recv_buf);
+
+	idx = 2*API_KEY_LEN+1;
+	idx = idx + AES_KEY_SIZE - idx%AES_KEY_SIZE;
+	aes128_cbc_encrypt(recv_buf, idx, recv_buf, &idx);
+	ESP_LOGI(TAG, "response encrypted '%s'", recv_buf);
+
+	if (strlen(recv_buf) != idx) {
+        ESP_LOGE(TAG, "response encryption error");
+        return _500;   		
+	}
 
     // 200, response
+	memset(recv_p.str,0, recv_p.len);
+	sprintf(recv_p.str, HTTP_SERVER_ACK_1, app_json, idx, recv_buf);
+
+    idx = write(new_sockfd, recv_p.str, strlen(recv_p.str));
+    ESP_LOGI(TAG, "response 200 OK\n%s", recv_p.str);
+    if (idx > 0) {
+        ESP_LOGI(TAG, "/upload reply sent, OK");
+    	return DONE;    
+    } else {
+        ESP_LOGE(TAG, "/upload reply sent, error");
+        close(upload_file);
+        return _500;
+    }
 
     // else drop request
-    return DONE;
+    
 }
 
 #endif
