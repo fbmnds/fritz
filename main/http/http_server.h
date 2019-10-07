@@ -18,7 +18,7 @@ static void tls_task(void *p)
     struct sockaddr_in sock_addr;
 
     static char recv_buf[HTTP_RECV_BUF_LEN];
-    str_pt recv_p;
+    str_pt recv_p, api_key;
     char *temp_buf;
     static char recv_buf_short[HTTP_RECV_BUF_SHORT_LEN];
     static char index_buf[HTTP_SERVER_ACK_1_BUFLEN];
@@ -99,8 +99,9 @@ reconnect:
         ESP_LOGI(TAG, "decrypted %s", recv_p.str); 
     }
     
-
-    if (validate_req_base(&recv_p) < 0) {
+    api_key.str = API_KEY;
+    api_key.len = API_KEY_LEN;
+    if (validate_req_base(&recv_p, &api_key) < 0) {
         ESP_LOGE(TAG, "HTTP validation error: ignore request");
         ESP_LOGE(TAG, "%s", recv_buf);
         goto _500;        

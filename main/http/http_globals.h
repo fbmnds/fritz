@@ -136,13 +136,12 @@ int validate_req(char* recv_buf, const unsigned char* recv_buf_decr)
     return i;
 }
 
-int validate_req_base(str_pt* str)
+int validate_req_base(str_pt* str, str_pt* key)
 {
     // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx;x;on
     //     4    9    14   19   24   29
     // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx;x;off
     // xxxx-xxxx-xxxx;xxxx-xxxx-xxxx
-    str_pt s;
     if (str->len < 30) return -1;
     if (str->str[4] != '-') return -4;
     if (str->str[9] != '-') return -9;
@@ -150,9 +149,7 @@ int validate_req_base(str_pt* str)
     if (str->str[24] != '-') return -24;
     if (str->str[14] != ';') return -14;
     //if (str->str[29] != ';') return -29;
-    s.str = API_KEY;
-    s.len = API_KEY_LEN;
-    if (!cmp_str_head(&str->str[15], &s)) return -15;
+    if (!cmp_str_head(&str->str[15], key)) return -15;
     return 0;
 }
 

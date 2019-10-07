@@ -41,6 +41,10 @@ void esp_sha(int sha_type, const unsigned char *input, size_t ilen, unsigned cha
 
 static char recv_buf[HTTP_RECV_BUF_LEN];
 
+static str_pt api_key    = { .str = API_KEY,    .len = API_KEY_LEN };
+static str_pt upload_key = { .str = UPLOAD_KEY, .len = API_KEY_LEN };
+
+
 #define TEST_RECV_BUF_MAX_LEN 256
 #define TEST_RECV_BUF "POST /upload/test.txt HTTP/1.1\r\nContent-Length: 123\r\n\r\n0123456789abcdef\r\n"
 	//                          0         0          0           0         0             0         0
@@ -300,7 +304,7 @@ void test6 (void)
 
 	for (int i=0; i<strlen(test_recv_buf); i++) assert(test_recv_buf[i] == test_recv_buf_decrypt[i]);
 
-	assert (validate_req_base(&recv_p) == -15);
+	assert (validate_req_base(&recv_p, &api_key) == -15);
 
 	p_green("test6: cp_str_head, set_payload_idx2, aes128_cbc_decrypt3, validate_req_base passed\n");
 
@@ -375,7 +379,7 @@ void test8(const char* req, const char* req_decrypt,
 
 	for (int i=0; i<strlen(recv_buf); i++) assert(recv_buf[i] == recv_buf_decrypt[i]);
 
-	assert (validate_req_base(&recv_p) == 0);
+	assert (validate_req_base(&recv_p, &api_key) == 0);
 
 	rc = register_req(req_register, register_idx, &recv_p);
 	assert(rc == 0);
