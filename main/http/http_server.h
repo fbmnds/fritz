@@ -93,7 +93,7 @@ reconnect:
 
     ESP_LOGI(TAG, "recv_buf encrypted %s", recv_p.str); // recv_p IS null terminated, as recv_buf is
 
-    aes128_cbc_decrypt3(&recv_p, &recv_p); // recv_p IS null terminated, being half as long as the encrypted string
+    aes128_cbc_decrypt3(&recv_p, &recv_p, &secret_ctx, IV); // recv_p IS null terminated, being half as long as the encrypted string
     
     if (recv_p.str) {
         ESP_LOGI(TAG, "decrypted %s", recv_p.str); 

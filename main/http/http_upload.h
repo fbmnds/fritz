@@ -35,7 +35,7 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int recv_buf_rec
 
     ESP_LOGI(TAG, "recv_buf encrypted %s", recv_p.str); // recv_p IS null terminated, as recv_buf is
 
-    aes128_cbc_decrypt3(&recv_p, &recv_p); // recv_p IS null terminated, being half as long as the encrypted string
+    aes128_cbc_decrypt3(&recv_p, &recv_p, &secret_ctx, IV); // recv_p IS null terminated, being half as long as the encrypted string
     
     if (recv_p.str) {
         ESP_LOGI(TAG, "decrypted %s", recv_p.str); 
@@ -64,7 +64,7 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int recv_buf_rec
 
     ESP_LOGI(TAG, "file for writing, encrypted: %s", recv_p.str);
 
-    if (aes128_cbc_decrypt3(&recv_p, &recv_p)) return _500;
+    if (aes128_cbc_decrypt3(&recv_p, &recv_p, &secret_ctx, IV)) return _500;
 
     ESP_LOGI(TAG, "file for writing, decrypted: %s", recv_p.str);
 
@@ -107,7 +107,7 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int recv_buf_rec
 
 	idx = 2*API_KEY_LEN+1;
 	idx = idx + AES_KEY_SIZE - idx%AES_KEY_SIZE;
-	aes128_cbc_encrypt(recv_buf, idx, recv_buf, &idx);
+	aes128_cbc_encrypt(recv_buf, idx, recv_buf, &idx, &secret_ctx, IV);
 	ESP_LOGI(TAG, "response encrypted '%s'", recv_buf);
 
 	if (strlen(recv_buf) != idx) {
@@ -148,7 +148,8 @@ http_server_label_t post_put(int new_sockfd, char* recv_buf, int recv_buf_receiv
 
     ESP_LOGI(TAG, "recv_buf encrypted %s", recv_p.str); // recv_p IS null terminated, as recv_buf is
 
-    aes128_cbc_decrypt3(&recv_p, &recv_p); // recv_p IS null terminated, being half as long as the encrypted string
+    aes128_cbc_decrypt3(&recv_p, &recv_p, // recv_p IS null terminated, being half as long as the encrypted string
+                        &secret_ctx, IV); 
     
     if (recv_p.str) {
         ESP_LOGI(TAG, "decrypted %s", recv_p.str); 

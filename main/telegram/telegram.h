@@ -88,7 +88,7 @@ static void telegram_task(void *pvParameters)
         for (int i=strlen(ip)+1; i<buf_len; i++) buf[i] = API_KEY[i-strlen(ip)-1];
         buf[buf_len] = '\0';
         
-        aes128_cbc_encrypt(buf, buf_len, buf_hex, &buf_hex_len);
+        aes128_cbc_encrypt(buf, buf_len, buf_hex, &buf_hex_len, &secret_ctx, IV);
 
         //sprintf(request, T_REQUEST, TEXT_EQ_LEN + strlen(buf_hex), buf_hex);
         sprintf(request, T_REQUEST, TEXT_EQ_LEN + buf_hex_len - 1, buf_hex);

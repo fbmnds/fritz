@@ -15,11 +15,11 @@
 
 #define API_KEY_LEN 14
 #define API_KEY_LEN_m2 12
-static char API_KEY[]      = "0000-0000-0000";
-static char cs[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+static char API_KEY[] = "0000-0000-0000";
+static char cs[]  = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 static int cs_len = 36;
 
-#define IV {0xFF,0xEE,0xDD,0xCC,0xBB,0xAA,0x99,0x88,0x77,0x66,0x55,0x44,0x33,0x22,0x11,0x00}
+static unsigned char IV[] = {0xFF,0xEE,0xDD,0xCC,0xBB,0xAA,0x99,0x88,0x77,0x66,0x55,0x44,0x33,0x22,0x11,0x00};
 
 typedef struct {
     uint8_t key_bytes;
@@ -55,16 +55,23 @@ static esp_aes_context secret_ctx = {
 static unsigned char aes_hex_in[AES_B64_BUF_LEN];
 static unsigned char aes_hex_out[AES_B64_BUF_LEN];
 
-void aes128_cbc_encrypt(const char *in, int in_len, char *out2, int *out2_len)
+void aes128_cbc_encrypt(const char*      in,   
+                        int              in_len, 
+                        char*            out2, 
+                        int*             out2_len,
+                        esp_aes_context* secret_ctx,
+                        unsigned char*   secret_iv)
 {
 	int ret, mod_key_size;
 	size_t in_len2;
-    unsigned char iv[] = IV;
     AES_KEY enc_key;
+    unsigned char iv[AES_KEY_SIZE];
 
 	assert(in_len % AES_KEY_SIZE == 0);
     in_len2 = (size_t) in_len;
 	
+    for (int i = 0; i < AES_KEY_SIZE; i++) iv[i] = IV[i];
+
     //ESP_LOGI("SECRET: ", "aes128_cbc_encrypt i n_len2 = %ld\n%s\n", in_len2, in);
 
 	bzero(aes_hex_in, sizeof(aes_hex_in));
@@ -74,7 +81,7 @@ void aes128_cbc_encrypt(const char *in, int in_len, char *out2, int *out2_len)
     bzero(aes_hex_out, sizeof(aes_hex_out));
 	memset(out2, 0, *out2_len);
 
-    AES_set_encrypt_key(secret_ctx.key, sizeof(secret_ctx.key)*8, &enc_key);
+    AES_set_encrypt_key(secret_ctx->key, sizeof(secret_ctx->key)*8, &enc_key);
     AES_cbc_encrypt(aes_hex_in, aes_hex_out, sizeof(aes_hex_in), &enc_key, iv, AES_ENCRYPT);
 
 	for (size_t i=0; i<in_len2; i++) {
@@ -91,12 +98,15 @@ uint8_t ctoi (char c)
     return -1;
 }
 
-int aes128_cbc_decrypt3(str_pt *in, str_pt *out)
+int aes128_cbc_decrypt3(str_pt*          in, 
+                        str_pt*          out,
+                        esp_aes_context* secret_ctx,
+                        unsigned char*   secret_iv)
 {
     int ret;
     uint8_t *aes_hex_in_8;
-    unsigned char iv[] = IV;
     AES_KEY dec_key;
+    unsigned char iv[AES_KEY_SIZE];
 
     assert(in->len <= out->len);
 
@@ -104,6 +114,8 @@ int aes128_cbc_decrypt3(str_pt *in, str_pt *out)
         ESP_LOGE("SECRET: ", "esp_aes_crypt_cbc aes_hex_in failed, in_len = %d", in->len);
         return -1;
     }
+
+    for (int i = 0; i < AES_KEY_SIZE; i++) iv[i] = IV[i];
 
     aes_hex_in_8 = (uint8_t *) aes_hex_in;
     bzero(aes_hex_in, sizeof(aes_hex_in));
@@ -113,14 +125,13 @@ int aes128_cbc_decrypt3(str_pt *in, str_pt *out)
     }
 
     
-    AES_set_decrypt_key(secret_ctx.key, sizeof(secret_ctx.key)*8, &dec_key); // Size of key is in bits
+    AES_set_decrypt_key(secret_ctx->key, sizeof(secret_ctx->key)*8, &dec_key); // Size of key is in bits
     AES_cbc_encrypt(aes_hex_in, aes_hex_out, sizeof(aes_hex_in), &dec_key, iv, AES_DECRYPT);
 
     bzero(out->str, in->len);
     /* copy with terminating '\0' */
     for (int i=0; i<=strlen(aes_hex_out) ; i++) out->str[i] = (char) aes_hex_out[i];
     out->len = strlen(out->str); 
-
     return 0;    
 }
 

@@ -218,7 +218,7 @@ void test4 (const char* req, const char* req_decrypt)
 	assert(out2.len % AES_KEY_SIZE == 0);
 	assert(out2.len>=sizeof(out2));
     
-    aes128_cbc_encrypt(req_decrypt, in_len, out2.str, &out2.len);
+    aes128_cbc_encrypt(req_decrypt, in_len, out2.str, &out2.len, &secret_ctx, IV);
 
     assert(out.len>2*in_len); /* with terminating '\0' */
     for (int i=0; i<strlen(req_decrypt); i++)  printf("%c", req_decrypt[i]);  printf("\n");
@@ -226,9 +226,12 @@ void test4 (const char* req, const char* req_decrypt)
     for (int i=0; i<out2.len; i++) assert(out2.str[i] == req[i]);
 
     memset(out.str, 0, out.len);
-    aes128_cbc_decrypt3(&out2, &out);
+    aes128_cbc_decrypt3(&out2, &out, &secret_ctx, IV);
     printf("in_len %d out.len %d\n", in_len, out.len);
     assert(in_len >= out.len);
+    for (int i=0; i<out.len; i++) printf("out.str     '%s'\n", out.str);
+    for (int i=0; i<out.len; i++) printf("req_decrypt '%s'\n", req_decrypt);
+
     for (int i=0; i<out.len; i++) assert(out.str[i] == req_decrypt[i]);
 
     p_green("test4: aes128_cbc_encrypt, aes128_cbc_decrypt passed\n");
@@ -261,7 +264,7 @@ void test5 (void)
 	assert(recv_p.len == strlen(test));
 	for (int i=0; i<recv_p.len; i++) assert(test[i] == recv_p.str[i]);
 
-	aes128_cbc_decrypt3(&recv_p, &recv_p);
+	aes128_cbc_decrypt3(&recv_p, &recv_p, &secret_ctx, IV);
 	
 	assert(strlen(recv_p.str) == strlen(test2));
 	for (int i=0; i<strlen(test2); i++) assert(test2[i] == recv_p.str[i]);
@@ -297,7 +300,7 @@ void test6 (void)
 	assert(recv_p.len == strlen(test));
 	for (int i=0; i<recv_p.len; i++) assert(test[i] == recv_p.str[i]);
 
-	aes128_cbc_decrypt3(&recv_p, &recv_p);
+	aes128_cbc_decrypt3(&recv_p, &recv_p, &secret_ctx, IV);
 	
 	assert(strlen(recv_p.str) == strlen(test2));
 	for (int i=0; i<strlen(test2); i++) assert(test2[i] == recv_p.str[i]);
@@ -372,7 +375,7 @@ void test8(const char* req, const char* req_decrypt,
 	assert(recv_p.len == strlen(req));
 	for (int i=0; i<recv_p.len; i++) assert(req[i] == recv_p.str[i]);
 
-	aes128_cbc_decrypt3(&recv_p, &recv_p);
+	aes128_cbc_decrypt3(&recv_p, &recv_p, &secret_ctx, IV);
 	
 	assert(strlen(recv_p.str) == strlen(req_decrypt));
 	for (int i=0; i<strlen(req_decrypt); i++) assert(req_decrypt[i] == recv_p.str[i]);
@@ -434,18 +437,19 @@ int main(void)
 	const char req_decrypt[] = "xxxx-xxxx-xxxx;yyyy-yyyy-yyyy;1;on\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 	                           //   4    9    14   19   24   29
 	const char req[] = "262c6d8baa84549ac2a089d9825220a09f53955aa5f4fd9dca89785b39ebbd3b42af884c8bab89300f7ea122a9016f2f";
-	test4(req, req_decrypt);
+	
 	char req_decrypt_0[] = "0000-0000-0000;0000-0000-0000;1;on\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 	char req_0[] = "a39f7dd2a1edd5bb6a20e87466429efa21fc4c53d3eb183d793fa991e6400e0363649b1f0953ff65d777b04162d2f97c";
-	test4(req_0, req_decrypt_0);
 	const char req_decrypt_1[] = "1111-1111-1111;0000-0000-0000;1;on\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 	const char req_1[] = "1e45fb4ee99101b2438cb5c33131f0fb62620bf3cbc461d2bd1c2ab69f91fc92740fc007465488df7915d1fb11e49512";
-	test4(req_1, req_decrypt_1);
 	const char req_decrypt_2[] = "2222-2222-2222;0000-0000-0000;1;on\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 	const char req_2[] = "5025d9a0a0b92bb4fc8bf39d688042bd432067def7ba9457caa32eff8ba9a5beb6c7fe88b9d71a6965651f7813be6d09";
-	test4(req_2, req_decrypt_2);
 	const char req_decrypt_3[] = "3333-3333-3333;0000-0000-0000;1;on\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 	const char req_3[] = "72d246bb9ffb87779b00989163ab6be3ad9865368bf664fb1249efff9e9a2e0151e84f8d3cceb0cf60929f7d166c3603";
+	test4(req, req_decrypt);
+    test4(req_0, req_decrypt_0);
+    test4(req_1, req_decrypt_1);
+	test4(req_2, req_decrypt_2);    
 	test4(req_3, req_decrypt_3);
 	test5();
 	test6();
@@ -471,7 +475,7 @@ int main(void)
 		req_decrypt_0[12] = '0' + i/10;
 		req_decrypt_0[13] = '0' + i%10;
 		//printf("strlen(req_decrypt_0) %ld\n", strlen(req_decrypt_0));
-		aes128_cbc_encrypt(req_decrypt_0, 48, str.str, &str.len);
+		aes128_cbc_encrypt(req_decrypt_0, 48, str.str, &str.len, &secret_ctx, IV);
 		test8(req_0, req_decrypt_0, req_register, &register_idx);
 		if (i == 0) 
 			assert(register_idx == 1);
