@@ -36,7 +36,7 @@ static void esp_fill_random(char *s, int len)
 #define close(f) fclose(f)
 #define write(x,y,z) 1
 
-static void set_iv(char* s) {
+static void set_nonce(char* s) {
     unsigned char buf[API_KEY_LEN_m2];
     esp_fill_random(buf, API_KEY_LEN_m2);
     for (int i=0; i<4; i++)  s[i]   = cs[buf[i]%cs_len];

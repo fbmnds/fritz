@@ -12,6 +12,7 @@ static FILE* upload_file = NULL;
 
 static char UPLOAD_KEY[] = "____-____-____";
 static char UPLOAD_NONCE[]  = "____-____-____";
+static unsigned char UPLOAD_IV[AES_KEY_SIZE];
 
 #define SD_PREFIX_LEN 7
 static char SD_PREFIX[] = "/sdcard";
@@ -96,13 +97,14 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int recv_buf_rec
         ESP_LOGE(TAG, "UPLOAD_NONCE configuration error");
         return _500;   	
     }
-    set_iv(UPLOAD_NONCE);
+    set_nonce(UPLOAD_NONCE);
 
     // build encrypted response
     memset(&recv_buf[0], 0, HTTP_RECV_BUF_SHORT_LEN);
     for (int i=0; i<API_KEY_LEN; i++) recv_buf[i] = UPLOAD_NONCE[i];
     recv_buf[API_KEY_LEN] = ';';
 	for (int i=API_KEY_LEN+1; i<2*API_KEY_LEN+1; i++) recv_buf[i] = UPLOAD_KEY[i-API_KEY_LEN-1];
+	recv_buf[2*API_KEY_LEN+1];
 	ESP_LOGI(TAG, "response '%s'", recv_buf);
 
 	idx = 2*API_KEY_LEN+1;
@@ -176,7 +178,7 @@ http_server_label_t post_put(int new_sockfd, char* recv_buf, int recv_buf_receiv
         ESP_LOGE(TAG, "UPLOAD_NONCE configuration error");
         return _500;   	
     }
-    set_iv(UPLOAD_NONCE);
+    set_nonce(UPLOAD_NONCE);
 
     // build encrypted response
     memset(&recv_buf[0], 0, HTTP_RECV_BUF_SHORT_LEN);
