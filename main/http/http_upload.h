@@ -12,7 +12,14 @@ static FILE* upload_file = NULL;
 
 static char UPLOAD_KEY[] = "____-____-____";
 static char UPLOAD_NONCE[]  = "____-____-____";
-static unsigned char UPLOAD_IV[AES_KEY_SIZE];
+
+static esp_aes_context secret_upload_ctx = {
+    .key_bytes = AES_KEY_SIZE,
+    .key = {0x00,0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88,0x99,0xAA,0xBB,0xCC,0xDD,0xEE,0xFF}
+};
+static unsigned char* UPLOAD_IV = secret_upload_ctx.key;
+
+#define ACCESS_TOKEN_ENCRYPT_LEN 2*(2*API_KEY_LEN+1)
 
 #define SD_PREFIX_LEN 7
 static char SD_PREFIX[] = "/sdcard";
@@ -104,7 +111,10 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int recv_buf_rec
     for (int i=0; i<API_KEY_LEN; i++) recv_buf[i] = UPLOAD_NONCE[i];
     recv_buf[API_KEY_LEN] = ';';
 	for (int i=API_KEY_LEN+1; i<2*API_KEY_LEN+1; i++) recv_buf[i] = UPLOAD_KEY[i-API_KEY_LEN-1];
-	recv_buf[2*API_KEY_LEN+1];
+	recv_buf[2*API_KEY_LEN+1] = ';';
+	set_iv(UPLOAD_IV, AES_KEY_SIZE);
+	for (int i=0; i<AES_KEY_SIZE/2; i++) 
+		sprintf(recv_buf+2*API_KEY_LEN+2+i*2, "%02x", UPLOAD_IV[i]); 
 	ESP_LOGI(TAG, "response '%s'", recv_buf);
 
 	idx = 2*API_KEY_LEN+1;
@@ -141,17 +151,16 @@ http_server_label_t post_put(int new_sockfd, char* recv_buf, int recv_buf_receiv
     if (!upload_file) return _500;
 
     // validate UPLOAD_KEY
-    recv_p.str = NULL;
-    recv_p.len = 0; 
-    switch (set_payload_idx2 (&recv_p, recv_buf)) {
-        case DONE: return DONE;
-        default:   break;
-    }
+    recv_p.str = strstr(recv_buf, "Access_Token: ");
+    if (!recv_p.str) return _500;
 
-    ESP_LOGI(TAG, "recv_buf encrypted %s", recv_p.str); // recv_p IS null terminated, as recv_buf is
+    recv_p.str += strlen("Access_Token: ")*sizeof(char);
+    recv_p.len = ACCESS_TOKEN_ENCRYPT_LEN;
+    recv_p.str[ACCESS_TOKEN_ENCRYPT_LEN] = '\0';
+    ESP_LOGI(TAG, "recv_buf encrypted %s", recv_p.str); 
 
     aes128_cbc_decrypt3(&recv_p, &recv_p, // recv_p IS null terminated, being half as long as the encrypted string
-                        &secret_ctx, IV); 
+                        &secret_ctx, UPLOAD_IV); 
     
     if (recv_p.str) {
         ESP_LOGI(TAG, "decrypted %s", recv_p.str); 
@@ -165,13 +174,23 @@ http_server_label_t post_put(int new_sockfd, char* recv_buf, int recv_buf_receiv
         return _500;        
     }
 
-    // get IV
+    // register request?
 
+
+    // get payload position
+    recv_p.str = NULL;
+    recv_p.len = 0;
+    switch (set_payload_idx2 (&recv_p, recv_buf)) {
+        case DONE: return _500;
+        default:   break;
+    }
 
     // decrypt payload
-
+    aes128_cbc_decrypt4(&recv_p, &recv_p, &secret_upload_ctx, UPLOAD_IV);
 
     // write to file
+    
+    // close on end-of-transaction
 
     // generate IV
     if (strlen(UPLOAD_NONCE) != API_KEY_LEN) {

@@ -9,8 +9,8 @@
 #define AES_ENCRYPT     1
 #define AES_DECRYPT     0
 
-#define AES_B64_BUF_LEN   1024
-#define AES_B64_BUF_LEN_2 2048
+#define AES_B64_BUF_LEN   8*1024
+//#define AES_B64_BUF_LEN_2 2048
 #define AES_KEY_SIZE        16
 
 #define API_KEY_LEN 14
@@ -44,6 +44,11 @@ static void set_nonce(char* s) {
     for (int i=8; i<12; i++) s[i+2] = cs[buf[i]%cs_len];
     ESP_LOGI("secret", "IV %s", s);
     
+}
+
+static void set_iv(unsigned char* p, int aes_key_size)
+{
+    esp_fill_random(p, aes_key_size);
 }
 
 static esp_aes_context secret_ctx = {
@@ -132,6 +137,44 @@ int aes128_cbc_decrypt3(str_pt*          in,
     /* copy with terminating '\0' */
     for (int i=0; i<=strlen(aes_hex_out) ; i++) out->str[i] = (char) aes_hex_out[i];
     out->len = strlen(out->str); 
+    return 0;    
+}
+
+int aes128_cbc_decrypt4(str_pt*          in, 
+                        str_pt*          out,
+                        esp_aes_context* secret_ctx,
+                        unsigned char*   secret_iv)
+{
+    int ret;
+    uint8_t *aes_hex_in_8;
+    AES_KEY dec_key;
+    unsigned char iv[AES_KEY_SIZE];
+    unsigned char* u_out;
+
+    assert(in->len <= out->len);
+
+    if (in->len%AES_KEY_SIZE) {
+        ESP_LOGE("SECRET: ", "esp_aes_crypt_cbc aes_hex_in failed, in_len = %d", in->len);
+        return -1;
+    }
+
+    for (int i = 0; i < AES_KEY_SIZE; i++) iv[i] = IV[i];
+
+    aes_hex_in_8 = (uint8_t *) aes_hex_in;
+    bzero(aes_hex_in, sizeof(aes_hex_in));
+    for (int i=0; i<in->len/2; i++) {
+        aes_hex_in_8[i] = ctoi(in->str[2*i])*16 + ctoi(in->str[2*i+1]);
+        //ESP_LOGI("SECRET: ", "aes_hex_in %x", (int) aes_hex_in_8[i]);
+    }
+
+    
+    AES_set_decrypt_key(secret_ctx->key, sizeof(secret_ctx->key)*8, &dec_key); // Size of key is in bits
+    AES_cbc_encrypt(aes_hex_in, aes_hex_out, sizeof(aes_hex_in), &dec_key, iv, AES_DECRYPT);
+
+    bzero(out->str, in->len);
+    u_out = (unsigned char*) out->str;
+    out->len = in->len/2;
+
     return 0;    
 }
 
