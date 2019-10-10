@@ -11,7 +11,7 @@
 static FILE* upload_file = NULL;
 
 static char UPLOAD_KEY[] = "____-____-____";
-static char UPLOAD_IV[]  = "____-____-____";
+static char UPLOAD_NONCE[]  = "____-____-____";
 
 #define SD_PREFIX_LEN 7
 static char SD_PREFIX[] = "/sdcard";
@@ -92,15 +92,15 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int recv_buf_rec
     }
     
     // generate IV
-    if (strlen(UPLOAD_IV) != API_KEY_LEN) {
-        ESP_LOGE(TAG, "UPLOAD_IV configuration error");
+    if (strlen(UPLOAD_NONCE) != API_KEY_LEN) {
+        ESP_LOGE(TAG, "UPLOAD_NONCE configuration error");
         return _500;   	
     }
-    set_iv(UPLOAD_IV);
+    set_iv(UPLOAD_NONCE);
 
     // build encrypted response
     memset(&recv_buf[0], 0, HTTP_RECV_BUF_SHORT_LEN);
-    for (int i=0; i<API_KEY_LEN; i++) recv_buf[i] = UPLOAD_IV[i];
+    for (int i=0; i<API_KEY_LEN; i++) recv_buf[i] = UPLOAD_NONCE[i];
     recv_buf[API_KEY_LEN] = ';';
 	for (int i=API_KEY_LEN+1; i<2*API_KEY_LEN+1; i++) recv_buf[i] = UPLOAD_KEY[i-API_KEY_LEN-1];
 	ESP_LOGI(TAG, "response '%s'", recv_buf);
@@ -163,6 +163,51 @@ http_server_label_t post_put(int new_sockfd, char* recv_buf, int recv_buf_receiv
         return _500;        
     }
 
-    return DONE;
+    // get IV
+
+
+    // decrypt payload
+
+
+    // write to file
+
+    // generate IV
+    if (strlen(UPLOAD_NONCE) != API_KEY_LEN) {
+        ESP_LOGE(TAG, "UPLOAD_NONCE configuration error");
+        return _500;   	
+    }
+    set_iv(UPLOAD_NONCE);
+
+    // build encrypted response
+    memset(&recv_buf[0], 0, HTTP_RECV_BUF_SHORT_LEN);
+    for (int i=0; i<API_KEY_LEN; i++) recv_buf[i] = UPLOAD_NONCE[i];
+    recv_buf[API_KEY_LEN] = ';';
+	for (int i=API_KEY_LEN+1; i<2*API_KEY_LEN+1; i++) recv_buf[i] = UPLOAD_KEY[i-API_KEY_LEN-1];
+	ESP_LOGI(TAG, "response '%s'", recv_buf);
+
+	idx = 2*API_KEY_LEN+1;
+	idx = idx + AES_KEY_SIZE - idx%AES_KEY_SIZE;
+	aes128_cbc_encrypt(recv_buf, idx, recv_buf, &idx, &secret_ctx, IV);
+	ESP_LOGI(TAG, "response encrypted '%s'", recv_buf);
+
+	if (strlen(recv_buf) != idx) {
+        ESP_LOGE(TAG, "response encryption error");
+        return _500;   		
+	}
+
+    // 200, response
+	memset(recv_p.str,0, recv_p.len);
+	sprintf(recv_p.str, HTTP_SERVER_ACK_1, app_json, idx, recv_buf);
+
+    idx = write(new_sockfd, recv_p.str, strlen(recv_p.str));
+    ESP_LOGI(TAG, "response 200 OK\n%s", recv_p.str);
+    if (idx > 0) {
+        ESP_LOGI(TAG, "/upload reply transmission OK");
+    	return DONE;    
+    } else {
+        ESP_LOGE(TAG, "/upload reply transmission failed");
+        fclose(upload_file);
+        return _500;
+    }
 }
 #endif
