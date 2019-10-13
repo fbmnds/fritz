@@ -3,33 +3,27 @@
 #include <stdbool.h>
 #include <string.h>
 #include <assert.h>
-#include <openssl/sha.h>
+
 
 #define TEST 1
+#define VERBOSE 1
+
 #define GCC_X86  1
 
-#define VERBOSE 1
+#ifdef GCC_X86
+
+#include <openssl/sha.h>
+
 #ifdef  VERBOSE
 #define ESP_LOGI(a, b, ...) printf("%s", a); printf(b, ##__VA_ARGS__);printf("\n")
 #define ESP_LOGE(a, b, ...) printf("%s", a); printf(b, ##__VA_ARGS__);printf("\n")
 #else
 #define ESP_LOGI(a, b, ...) 
 #define ESP_LOGE(a, b, ...) 
-#endif
+#endif /* VERBOSE */
+
 #define p_green(b, ...) printf("\n\033[1;32m");printf(b, ##__VA_ARGS__);printf("\033[1;0m")
 #define p_red(b, ...)   printf("\n\033[1;31m");printf(b, ##__VA_ARGS__);printf("\033[1;0m")
-
-typedef struct str_p {
-    char* str;
-    int  len;
-} str_pt;
-
-typedef struct u_str_p {
-    unsigned char* u_str;
-    int  len;
-} u_str_pt;
-
-#include "test_secrets.h"
 
 #define SHA2_256 0
 void esp_sha(int sha_type, const unsigned char *input, size_t ilen, unsigned char *output)
@@ -41,9 +35,17 @@ void esp_sha(int sha_type, const unsigned char *input, size_t ilen, unsigned cha
 	return;
 }
 
+typedef struct {
+    uint8_t key_bytes;
+    uint8_t key[32];
+} esp_aes_context;
+
+#endif /* GCC_X86 */
+
+#include "test_secrets.h"
+
 #include "../main/http/http_globals.h"
 #include "../main/http/http_upload.h"
-
 
 static char recv_buf[HTTP_RECV_BUF_LEN];
 
