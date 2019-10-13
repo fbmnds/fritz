@@ -113,7 +113,7 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int recv_buf_rec
 	for (int i=API_KEY_LEN+1; i<2*API_KEY_LEN+1; i++) recv_buf[i] = UPLOAD_KEY[i-API_KEY_LEN-1];
 	recv_buf[2*API_KEY_LEN+1] = ';';
 	set_iv(UPLOAD_IV, AES_KEY_SIZE);
-	for (int i=0; i<AES_KEY_SIZE/2; i++) 
+	for (int i=0; i<AES_KEY_SIZE; i++) 
 		sprintf(recv_buf+2*API_KEY_LEN+2+i*2, "%02x", UPLOAD_IV[i]); 
 	ESP_LOGI(TAG, "response '%s'", recv_buf);
 
@@ -186,7 +186,7 @@ http_server_label_t post_put(int new_sockfd, char* recv_buf, int recv_buf_receiv
     }
 
     // decrypt payload
-    aes128_cbc_decrypt4(&recv_p, &recv_p, &secret_upload_ctx, UPLOAD_IV);
+    aes128_cbc_decrypt4(&recv_p, (u_str_pt *)&recv_p, &secret_upload_ctx, UPLOAD_IV);
 
     // write to file
     

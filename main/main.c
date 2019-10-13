@@ -34,7 +34,7 @@
 
 #include "esp_tls.h"
 
-#include "secrets/secrets.h"
+#include "secrets/algos.h"
 #include "http/http_server.h"
 #include "ipify/ipify.h"
 #include "telegram/telegram.h"

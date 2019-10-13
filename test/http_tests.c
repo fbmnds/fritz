@@ -6,6 +6,7 @@
 #include <openssl/sha.h>
 
 #define TEST 1
+#define GCC_X86  1
 
 #define VERBOSE 1
 #ifdef  VERBOSE
@@ -22,6 +23,11 @@ typedef struct str_p {
     char* str;
     int  len;
 } str_pt;
+
+typedef struct u_str_p {
+    unsigned char* u_str;
+    int  len;
+} u_str_pt;
 
 #include "test_secrets.h"
 
@@ -340,7 +346,7 @@ void test7(void)
 	sprintf(recv_buf_decrypt,TEST3_RECV_BUF_DECRYPT, req_decrypt);
 	for (int i=0; i<TEST2_RECV_BUF_DECRYPT_LEN+1; i++) assert(recv_buf_decrypt[i] == recv_buf_decrypt_2[i]);
 
-	p_green("test7: passed\n");
+	p_green("test7: building HTTP 200 with sprintf passed\n");
 }
 
 void test8(const char* req, const char* req_decrypt,
@@ -387,7 +393,7 @@ void test8(const char* req, const char* req_decrypt,
 	rc = register_req(req_register, register_idx, &recv_p);
 	assert(rc == 0);
 
-	p_green("test8: passed\n");
+	p_green("test8: validate_req_base, register_req passed\n");
 }
 
 void test9 (const char* req, const char* req_decrypt)
@@ -424,9 +430,71 @@ void test9 (const char* req, const char* req_decrypt)
 	for (int i=0; i<API_KEY_LEN; i++) assert(UPLOAD_KEY[i] == req_decrypt[i]);
 	//for (int i=0; i<API_KEY_LEN; i++) printf("%c", UPLOAD_KEY[i]); printf("\n");
 
-
-
     p_green("test9: post_upload passed\n");	
+}
+
+void test10 ()
+{
+	char recv_buf[HTTP_RECV_BUF_LEN];
+	const char test[] = "262c6d8baa84549ac2a089d9825220a0";
+	const unsigned char u_test[] = { 0x26, 0x2c, 0x6d, 0x8b, 0xaa, 0x84, 0x54, 0x9a, 
+	                                 0xc2, 0xa0, 0x89, 0xd9, 0x82, 0x52, 0x20, 0xa0 };
+	const char test_encrypt[] = "42b7846e0a73e64b12054ce59880f4ceeab619e9b77f83bd6bb4f690d57551a0";
+
+	char test_decr4[AES_KEY_SIZE*4];
+
+	str_pt   recv_p;
+	u_str_pt out;
+
+	int ret;
+
+
+	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
+
+	for (int i=0; i<AES_KEY_SIZE; i++) 
+		sprintf(recv_buf+2*API_KEY_LEN+2+i*2, "%02x", u_test[i]); 
+
+	recv_p.str = recv_buf+2*API_KEY_LEN+2;
+	recv_p.len = AES_KEY_SIZE*2;
+	assert(strlen(test) == AES_KEY_SIZE*2);
+	printf("%s\n", recv_buf+2*API_KEY_LEN+2);
+	assert(strlen(test) == strlen(recv_buf+2*API_KEY_LEN+2));
+	assert(strstr(recv_buf+2*API_KEY_LEN+2,test));
+
+	aes128_cbc_encrypt(recv_p.str, recv_p.len, recv_p.str, &recv_p.len, &secret_ctx, IV);
+	printf("%s\n", recv_buf+2*API_KEY_LEN+2);
+
+	memset(test_decr4, 0, AES_KEY_SIZE*4);
+	out.u_str = test_decr4;
+	out.len = AES_KEY_SIZE*4;
+	ret = aes128_cbc_decrypt4(&recv_p, &out, &secret_ctx, IV);
+
+	assert(ret == 0);
+	printf("out.len = %d\n", out.len);
+	assert(out.len == AES_KEY_SIZE*2);
+	printf("out.str %s\n", out.u_str);
+	for (int i=0; i<AES_KEY_SIZE; i++) printf("out.u_str[i] %02x u_test[i] %02x \n", out.u_str[i], u_test[i]);
+
+/*
+	recv_p.str = req;
+	recv_p.len = TEST2_RECV_BUF_LEN;
+	cp_str_head(test_recv_buf, &recv_p);
+
+	recv_p.str = NULL;
+	recv_p.len = 0;	
+	ret = set_payload_idx2(&recv_p, test_recv_buf);
+
+	assert(ret == CONTINUE);
+	assert(recv_p.str[0] == '2');
+	assert(recv_p.len == strlen(test));
+	for (int i=0; i<recv_p.len; i++) assert(test[i] == recv_p.str[i]);
+
+	aes128_cbc_decrypt3(&recv_p, &recv_p, &secret_ctx, IV);
+	
+	assert(strlen(recv_p.str) == strlen(test2));
+	for (int i=0; i<strlen(test2); i++) assert(test2[i] == recv_p.str[i]);
+*/
+    p_green("test10: aes128_cbc_decrypt4 passed\n");	
 }
 
 int main(void)
@@ -495,5 +563,6 @@ int main(void)
 		}
 	}
 	test9(req_1, req_decrypt_1);
+	test10();
 
 }

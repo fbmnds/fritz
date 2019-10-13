@@ -1,6 +1,9 @@
 #ifndef _TEST_SECRETS_H_
 #define _TEST_SECRETS_H_
 
+
+#ifdef GCC_X86
+
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -8,6 +11,8 @@
 
 #define AES_ENCRYPT     1
 #define AES_DECRYPT     0
+
+#endif 
 
 #define AES_B64_BUF_LEN   8*1024
 //#define AES_B64_BUF_LEN_2 2048
@@ -141,16 +146,17 @@ int aes128_cbc_decrypt3(str_pt*          in,
 }
 
 int aes128_cbc_decrypt4(str_pt*          in, 
-                        str_pt*          out,
+                        u_str_pt*        out,
                         esp_aes_context* secret_ctx,
                         unsigned char*   secret_iv)
 {
     int ret;
     uint8_t *aes_hex_in_8;
     AES_KEY dec_key;
-    unsigned char iv[AES_KEY_SIZE];
+    //unsigned char iv[AES_KEY_SIZE];
     unsigned char* u_out;
 
+    //printf("in->len = %d, out->len = %d", in->len, out->len);
     assert(in->len <= out->len);
 
     if (in->len%AES_KEY_SIZE) {
@@ -158,7 +164,7 @@ int aes128_cbc_decrypt4(str_pt*          in,
         return -1;
     }
 
-    for (int i = 0; i < AES_KEY_SIZE; i++) iv[i] = IV[i];
+    //for (int i = 0; i < AES_KEY_SIZE; i++) iv[i] = IV[i];
 
     aes_hex_in_8 = (uint8_t *) aes_hex_in;
     bzero(aes_hex_in, sizeof(aes_hex_in));
@@ -166,14 +172,13 @@ int aes128_cbc_decrypt4(str_pt*          in,
         aes_hex_in_8[i] = ctoi(in->str[2*i])*16 + ctoi(in->str[2*i+1]);
         //ESP_LOGI("SECRET: ", "aes_hex_in %x", (int) aes_hex_in_8[i]);
     }
-
     
     AES_set_decrypt_key(secret_ctx->key, sizeof(secret_ctx->key)*8, &dec_key); // Size of key is in bits
-    AES_cbc_encrypt(aes_hex_in, aes_hex_out, sizeof(aes_hex_in), &dec_key, iv, AES_DECRYPT);
+    AES_cbc_encrypt(aes_hex_in, aes_hex_out, sizeof(aes_hex_in), &dec_key, secret_iv, AES_DECRYPT);
 
-    bzero(out->str, in->len);
-    u_out = (unsigned char*) out->str;
     out->len = in->len/2;
+    bzero(out->u_str, out->len);
+    for (int i=0; i<out->len; i++) out->u_str[i] = aes_hex_out[i];
 
     return 0;    
 }
