@@ -219,7 +219,7 @@ void test4 (const char* req, const char* req_decrypt)
     	assert(out.str[i] == req_decrypt[i]);
     }
     		
-    p_green("test4: aes128_cbc_encrypt, aes128_cbc_decrypt passed\n");
+    p_green("test4: aes128_cbc_encrypt, aes128_cbc_decrypt3 passed\n");
 }
 
 void test5 (void)
@@ -254,7 +254,7 @@ void test5 (void)
 	assert(strlen(recv_p.str) == strlen(test2));
 	for (int i=0; i<strlen(test2); i++) assert(test2[i] == recv_p.str[i]);
 
-	p_green("test5: cp_str_head, set_payload_idx2, aes128_cbc_decrypt2 passed\n");
+	p_green("test5: cp_str_head, set_payload_idx2, aes128_cbc_decrypt3 passed\n");
 }
 
 void test6 (void)
@@ -438,12 +438,12 @@ void test10 ()
 	recv_p.str = recv_buf+2*API_KEY_LEN+2;
 	recv_p.len = AES_KEY_SIZE*2;
 	assert(strlen(test) == AES_KEY_SIZE*2);
-	printf("%s\n", recv_buf+2*API_KEY_LEN+2);
+//	printf("%s\n", recv_buf+2*API_KEY_LEN+2);
 	assert(strlen(test) == strlen(recv_buf+2*API_KEY_LEN+2));
 	assert(strstr(recv_buf+2*API_KEY_LEN+2,test));
 
 	aes128_cbc_encrypt(recv_p.str, recv_p.len, recv_p.str, &recv_p.len, &secret_ctx, IV);
-	printf("%s\n", recv_buf+2*API_KEY_LEN+2);
+//	printf("%s\n", recv_buf+2*API_KEY_LEN+2);
 
 	memset(test_decr4, 0, AES_KEY_SIZE*4);
 	out.u_str = test_decr4;
@@ -451,30 +451,26 @@ void test10 ()
 	ret = aes128_cbc_decrypt4(&recv_p, &out, &secret_ctx, IV);
 
 	assert(ret == 0);
-	printf("out.len = %d\n", out.len);
+//	printf("out.len = %d\n", out.len);
 	assert(out.len == AES_KEY_SIZE*2);
-	printf("out.str %s\n", out.u_str);
-	for (int i=0; i<AES_KEY_SIZE; i++) printf("out.u_str[i] %02x u_test[i] %02x \n", out.u_str[i], u_test[i]);
+//	printf("out.str %s\n", out.u_str);
+//	for (int i=0; i<AES_KEY_SIZE; i++) printf("out.u_str[i] %02x u_test[i] %02x \n", out.u_str[i], u_test[i]);
 
-/*
-	recv_p.str = req;
-	recv_p.len = TEST2_RECV_BUF_LEN;
-	cp_str_head(test_recv_buf, &recv_p);
+    for (int i=0; i<out.len/2; i++) {
+        ret = ctoi(out.u_str[2*i]);
+        assert(ret >= 0);
+        recv_p.str[i] = ret*16;
+        ret = ctoi(out.u_str[2*i+1]);
+        assert(ret >= 0);
+        recv_p.str[i] += ret;
+        //ESP_LOGI("SECRET: ", "aes_hex_in %x", (int) aes_hex_in[i]);
+    }
+    recv_p.len = out.len/2;
 
-	recv_p.str = NULL;
-	recv_p.len = 0;	
-	ret = set_payload_idx2(&recv_p, test_recv_buf);
+    assert(recv_p.len == strlen(test)/2);
+//	for (int i=0; i<AES_KEY_SIZE; i++) printf("(uint8_t)recv_p.str[i] %02x u_test[i] %02x \n", (uint8_t)recv_p.str[i], u_test[i]);
+    for (int i=0; i<recv_p.len; i++) assert(u_test[i] == (uint8_t)recv_p.str[i]);
 
-	assert(ret == CONTINUE);
-	assert(recv_p.str[0] == '2');
-	assert(recv_p.len == strlen(test));
-	for (int i=0; i<recv_p.len; i++) assert(test[i] == recv_p.str[i]);
-
-	aes128_cbc_decrypt3(&recv_p, &recv_p, &secret_ctx, IV);
-	
-	assert(strlen(recv_p.str) == strlen(test2));
-	for (int i=0; i<strlen(test2); i++) assert(test2[i] == recv_p.str[i]);
-*/
     p_green("test10: aes128_cbc_decrypt4 passed\n");	
 }
 

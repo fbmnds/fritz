@@ -92,7 +92,7 @@ void aes128_cbc_encrypt(const char*      in,
                         int              in_len, 
                         char*            out2, 
                         int*             out2_len,
-                        esp_aes_context* secret_ctx,
+                        const esp_aes_context* secret_ctx,
                         const unsigned char*   iv)
 {
 	int ret, mod_key_size;
@@ -129,7 +129,7 @@ void aes128_cbc_encrypt(const char*      in,
     AES_set_encrypt_key(secret_ctx->key, sizeof(secret_ctx->key)*8, &enc_key);
     AES_cbc_encrypt(aes_hex_in, aes_hex_out, sizeof(aes_hex_in), &enc_key, secret_iv, AES_ENCRYPT);
 #else
-	ret = esp_aes_crypt_cbc(secret_ctx,        // AES context
+	ret = esp_aes_crypt_cbc((esp_aes_context*) secret_ctx,        // AES context
                             ESP_AES_ENCRYPT,   // AES_ENCRYPT or AES_DECRYPT
                             in_len2,           // length of the input data
                             secret_iv,         // initialization vector (updated after use)       
@@ -150,7 +150,7 @@ void aes128_cbc_encrypt(const char*      in,
     *out2_len = 2*in_len2;
 }
 
-uint8_t ctoi (char c)
+int8_t ctoi (char c)
 {
     if (c >= '0' && c <= '9') return (uint8_t) (c - '0');
     if (c >= 'A' && c <= 'F') return (uint8_t) (10 + c - 'A');
@@ -159,10 +159,10 @@ uint8_t ctoi (char c)
 }
 
 
-int aes128_cbc_decrypt3(str_pt*          in, 
-                        str_pt*          out,
-                        esp_aes_context* secret_ctx,
-                        unsigned char*   iv)
+int aes128_cbc_decrypt3(str_pt* in, 
+                        str_pt* out,
+                        const esp_aes_context* secret_ctx,
+                        const unsigned char*   iv)
 {
     int ret;
 #ifdef GCC_X86
@@ -194,7 +194,7 @@ int aes128_cbc_decrypt3(str_pt*          in,
     AES_set_decrypt_key(secret_ctx->key, sizeof(secret_ctx->key)*8, &dec_key); // Size of key is in bits
     AES_cbc_encrypt(aes_hex_in, aes_hex_out, in->len/2, &dec_key, secret_iv, AES_DECRYPT);
 #else 
-    ret = esp_aes_crypt_cbc(secret_ctx,       // AES context
+    ret = esp_aes_crypt_cbc((esp_aes_context*) secret_ctx,       // AES context
                             ESP_AES_DECRYPT,  // AES_ENCRYPT or AES_DECRYPT
                             in->len/2,        // length of the input data
                             secret_iv,        // initialization vector (updated after use)       
@@ -215,44 +215,47 @@ int aes128_cbc_decrypt3(str_pt*          in,
 }
 
 
-int aes128_cbc_decrypt4(str_pt*          in, 
-                        u_str_pt*        out,
-                        esp_aes_context* secret_ctx,
-                        unsigned char*   secret_iv)
+int aes128_cbc_decrypt4(str_pt*   in, 
+                        u_str_pt* out,
+                        const esp_aes_context* secret_ctx,
+                        const unsigned char*   iv)
 {
     int ret;
-    uint8_t *aes_hex_in_8;
 #ifdef GCC_X86
     AES_KEY dec_key;
 #endif    
-    unsigned char iv[AES_KEY_SIZE];
+    unsigned char secret_iv[AES_KEY_SIZE];
 
     assert(in->len <= out->len);
-
     if (in->len%AES_KEY_SIZE) {
-        ESP_LOGE("SECRET: ", "esp_aes_crypt_cbc aes_hex_in failed, in_len = %d", in->len);
+        ESP_LOGE("SECRET: ", "aes128_cbc_decrypt3 aes_hex_in failed, in_len = %d", in->len);
         return -1;
     }
 
-    for (int i = 0; i < AES_KEY_SIZE; i++) iv[i] = secret_iv[i];
+    for (int i = 0; i < AES_KEY_SIZE; i++) secret_iv[i] = iv[i];
 
-    aes_hex_in_8 = (uint8_t *) aes_hex_in;
-    bzero(aes_hex_in, sizeof(aes_hex_in));
+    memset(aes_hex_in, 0, AES_B64_BUF_LEN);
     for (int i=0; i<in->len/2; i++) {
-        aes_hex_in_8[i] = ctoi(in->str[2*i])*16 + ctoi(in->str[2*i+1]);
-        ESP_LOGI("SECRET: ", "aes_hex_in %x", (int) aes_hex_in_8[i]);
+        ret = ctoi(in->str[2*i]);
+        if (ret < 0) return -1;
+        aes_hex_in[i] = ret*16;
+        ret = ctoi(in->str[2*i+1]);
+        if (ret < 0) return -1;
+        aes_hex_in[i] += ret;
+        //ESP_LOGI("SECRET: ", "aes_hex_in %x", (int) aes_hex_in[i]);
     }
-    
+
+    memset(aes_hex_out, 0, AES_B64_BUF_LEN);
 #ifdef GCC_X86
     AES_set_decrypt_key(secret_ctx->key, sizeof(secret_ctx->key)*8, &dec_key); // Size of key is in bits
-    AES_cbc_encrypt(aes_hex_in, aes_hex_out, sizeof(aes_hex_in), &dec_key, iv, AES_DECRYPT);
-#else
-    ret = esp_aes_crypt_cbc(secret_ctx,       // AES context
-                            ESP_AES_DECRYPT,   // AES_ENCRYPT or AES_DECRYPT
-                            in->len/2,         // length of the input data
-                            iv,                // initialization vector (updated after use)       
-                            aes_hex_in,        // buffer holding the input data
-                            aes_hex_out);      // buffer holding the output data
+    AES_cbc_encrypt(aes_hex_in, aes_hex_out, in->len/2, &dec_key, secret_iv, AES_DECRYPT);
+#else 
+    ret = esp_aes_crypt_cbc((esp_aes_context*) secret_ctx,       // AES context
+                            ESP_AES_DECRYPT,  // AES_ENCRYPT or AES_DECRYPT
+                            in->len/2,        // length of the input data
+                            secret_iv,        // initialization vector (updated after use)       
+                            aes_hex_in,       // buffer holding the input data
+                            aes_hex_out);     // buffer holding the output data
 //  return 0 if successful, or ERR_AES_INVALID_INPUT_LENGTH       
     if (ret) {
         ESP_LOGE("secret", "esp_aes_crypt_cbc aes_hex_in failed, ret = %d", ret); 
