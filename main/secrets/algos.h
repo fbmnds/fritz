@@ -93,7 +93,7 @@ void aes128_cbc_encrypt(const char*      in,
                         char*            out2, 
                         int*             out2_len,
                         esp_aes_context* secret_ctx,
-                        unsigned char*   iv)
+                        const unsigned char*   iv)
 {
 	int ret, mod_key_size;
 	size_t in_len2;
@@ -101,6 +101,8 @@ void aes128_cbc_encrypt(const char*      in,
     AES_KEY enc_key;
 #endif
     unsigned char secret_iv[AES_KEY_SIZE];
+
+    for (int i = 0; i < AES_KEY_SIZE; i++) secret_iv[i] = iv[i];
 
 #ifdef TEST
     assert(in_len % AES_KEY_SIZE == 0);
@@ -111,7 +113,7 @@ void aes128_cbc_encrypt(const char*      in,
 		in_len2 = (size_t) (in_len + AES_KEY_SIZE - mod_key_size);
 	else
 		in_len2 = (size_t) in_len;
-	ESP_LOGI("secret", "aes128_cbc_encrypt i n_len2 = %d\n%s\n", in_len2, in);
+	ESP_LOGI("secret", "aes128_cbc_encrypt in_len2 = %d\n%s\n", in_len2, in);
 #endif /* TEST */
 
     for (int i = 0; i < AES_KEY_SIZE; i++) secret_iv[i] = iv[i];
@@ -125,7 +127,7 @@ void aes128_cbc_encrypt(const char*      in,
 
 #ifdef GCC_X86
     AES_set_encrypt_key(secret_ctx->key, sizeof(secret_ctx->key)*8, &enc_key);
-    AES_cbc_encrypt(aes_hex_in, aes_hex_out, sizeof(aes_hex_in), &enc_key, iv, AES_ENCRYPT);
+    AES_cbc_encrypt(aes_hex_in, aes_hex_out, sizeof(aes_hex_in), &enc_key, secret_iv, AES_ENCRYPT);
 #else
 	ret = esp_aes_crypt_cbc(secret_ctx,        // AES context
                             ESP_AES_ENCRYPT,   // AES_ENCRYPT or AES_DECRYPT
@@ -145,7 +147,7 @@ void aes128_cbc_encrypt(const char*      in,
 	for (size_t i=0; i<in_len2; i++) {
 		sprintf(out2+i*2, "%02x", aes_hex_out[i]);
 	} 
-    *out2_len = 2*in_len2+1;
+    *out2_len = 2*in_len2;
 }
 
 uint8_t ctoi (char c)
@@ -163,38 +165,41 @@ int aes128_cbc_decrypt3(str_pt*          in,
                         unsigned char*   iv)
 {
     int ret;
-    uint8_t *aes_hex_in_8;
 #ifdef GCC_X86
     AES_KEY dec_key;
 #endif    
     unsigned char secret_iv[AES_KEY_SIZE];
 
     assert(in->len <= out->len);
-
     if (in->len%AES_KEY_SIZE) {
-        ESP_LOGE("SECRET: ", "esp_aes_crypt_cbc aes_hex_in failed, in_len = %d", in->len);
+        ESP_LOGE("SECRET: ", "aes128_cbc_decrypt3 aes_hex_in failed, in_len = %d", in->len);
         return -1;
     }
 
     for (int i = 0; i < AES_KEY_SIZE; i++) secret_iv[i] = iv[i];
 
-    aes_hex_in_8 = (uint8_t *) aes_hex_in;
-    bzero(aes_hex_in, sizeof(aes_hex_in));
+    memset(aes_hex_in, 0, AES_B64_BUF_LEN);
     for (int i=0; i<in->len/2; i++) {
-        aes_hex_in_8[i] = ctoi(in->str[2*i])*16 + ctoi(in->str[2*i+1]);
-        //ESP_LOGI("SECRET: ", "aes_hex_in %x", (int) aes_hex_in_8[i]);
+        ret = ctoi(in->str[2*i]);
+        if (ret < 0) return -1;
+        aes_hex_in[i] = ret*16;
+        ret = ctoi(in->str[2*i+1]);
+        if (ret < 0) return -1;
+        aes_hex_in[i] += ret;
+        //ESP_LOGI("SECRET: ", "aes_hex_in %x", (int) aes_hex_in[i]);
     }
 
+    memset(aes_hex_out, 0, AES_B64_BUF_LEN);
 #ifdef GCC_X86
     AES_set_decrypt_key(secret_ctx->key, sizeof(secret_ctx->key)*8, &dec_key); // Size of key is in bits
-    AES_cbc_encrypt(aes_hex_in, aes_hex_out, sizeof(aes_hex_in), &dec_key, secret_iv, AES_DECRYPT);
+    AES_cbc_encrypt(aes_hex_in, aes_hex_out, in->len/2, &dec_key, secret_iv, AES_DECRYPT);
 #else 
     ret = esp_aes_crypt_cbc(secret_ctx,       // AES context
-                            ESP_AES_DECRYPT,   // AES_ENCRYPT or AES_DECRYPT
-                            in->len/2,         // length of the input data
-                            secret_iv,         // initialization vector (updated after use)       
-                            aes_hex_in,        // buffer holding the input data
-                            aes_hex_out);      // buffer holding the output data
+                            ESP_AES_DECRYPT,  // AES_ENCRYPT or AES_DECRYPT
+                            in->len/2,        // length of the input data
+                            secret_iv,        // initialization vector (updated after use)       
+                            aes_hex_in,       // buffer holding the input data
+                            aes_hex_out);     // buffer holding the output data
 //  return 0 if successful, or ERR_AES_INVALID_INPUT_LENGTH       
     if (ret) {
         ESP_LOGE("secret", "esp_aes_crypt_cbc aes_hex_in failed, ret = %d", ret); 
@@ -203,9 +208,8 @@ int aes128_cbc_decrypt3(str_pt*          in,
 #endif /* GCC_X86 */
 
     bzero(out->str, in->len);
-    /* copy with terminating '\0' */
-    for (int i=0; i<=strlen((char *)aes_hex_out); i++) out->str[i] = (char) aes_hex_out[i];
-    out->len = strlen(out->str); 
+    for (int i=0; i<in->len/2; i++) out->str[i] = (char) aes_hex_out[i];
+    out->len = in->len/2; 
 
     return 0;    
 }
@@ -236,17 +240,17 @@ int aes128_cbc_decrypt4(str_pt*          in,
     bzero(aes_hex_in, sizeof(aes_hex_in));
     for (int i=0; i<in->len/2; i++) {
         aes_hex_in_8[i] = ctoi(in->str[2*i])*16 + ctoi(in->str[2*i+1]);
-        //ESP_LOGI("SECRET: ", "aes_hex_in %x", (int) aes_hex_in_8[i]);
+        ESP_LOGI("SECRET: ", "aes_hex_in %x", (int) aes_hex_in_8[i]);
     }
     
 #ifdef GCC_X86
     AES_set_decrypt_key(secret_ctx->key, sizeof(secret_ctx->key)*8, &dec_key); // Size of key is in bits
-    AES_cbc_encrypt(aes_hex_in, aes_hex_out, sizeof(aes_hex_in), &dec_key, secret_iv, AES_DECRYPT);
+    AES_cbc_encrypt(aes_hex_in, aes_hex_out, sizeof(aes_hex_in), &dec_key, iv, AES_DECRYPT);
 #else
     ret = esp_aes_crypt_cbc(secret_ctx,       // AES context
                             ESP_AES_DECRYPT,   // AES_ENCRYPT or AES_DECRYPT
                             in->len/2,         // length of the input data
-                            secret_iv,         // initialization vector (updated after use)       
+                            iv,                // initialization vector (updated after use)       
                             aes_hex_in,        // buffer holding the input data
                             aes_hex_out);      // buffer holding the output data
 //  return 0 if successful, or ERR_AES_INVALID_INPUT_LENGTH       
