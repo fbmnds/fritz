@@ -42,11 +42,15 @@ static char cs[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 static int cs_len = 36;
 
 static void set_api_key() {
-    char buf[API_KEY_LEN_m2];
+    unsigned char buf[API_KEY_LEN_m2];
 
     for (int i=0; i<API_KEY_LEN; i++) API_KEY_PREV[i] = API_KEY[i];  // TODO critical section
 
-    esp_fill_random(buf, API_KEY_LEN_m2);
+#ifdef GCC_X86
+    esp_fill_random(buf, (int)API_KEY_LEN_m2);
+#else
+    esp_fill_random(buf, (size_t) API_KEY_LEN_m2);
+#endif
 
     for (int i=0; i<4; i++)  API_KEY[i]   = cs[buf[i]%cs_len];
     for (int i=4; i<8; i++)  API_KEY[i+1] = cs[buf[i]%cs_len];
@@ -65,12 +69,17 @@ typedef struct u_str_p {
 } u_str_pt;
 
 static void set_nonce(char* s) {
-    char buf[API_KEY_LEN_m2];
-    esp_fill_random(buf, API_KEY_LEN_m2);
+    unsigned char buf[API_KEY_LEN_m2];
+#ifdef GCC_X86
+    esp_fill_random(buf, (int)API_KEY_LEN_m2);
+#else
+    esp_fill_random(buf, (size_t) API_KEY_LEN_m2);
+#endif
     for (int i=0; i<4; i++)  s[i]   = cs[buf[i]%cs_len];
     for (int i=4; i<8; i++)  s[i+1] = cs[buf[i]%cs_len];
     for (int i=8; i<12; i++) s[i+2] = cs[buf[i]%cs_len];
-    ESP_LOGI("secret", "IV %s", s);
+    printf("set_nonce '"); for (int i=0; i<API_KEY_LEN; i++) printf("%c", s[i]); printf("'\n");
+    ESP_LOGI("secret", " set_nonce '%s'", s);
 }
 
 #ifdef GCC_X86

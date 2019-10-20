@@ -82,12 +82,12 @@ extern FILE * upload_file;
 
 #define TEST4_RECV_BUF \
 "POST /upload/%s HTTP/1.1\r\n" \
-"Content-Length: 123\r\n\r\n" \
+"Content-Length: %ld\r\n\r\n" \
 "%s\r\n"
 
 #define TEST4_RECV_BUF_DECRYPT \
 "POST /upload/%s HTTP/1.1\r\n" \
-"Content-Length: 123\r\n\r\n" \
+"Content-Length: %ld\r\n\r\n" \
 "%s"
 
 #define TEST_TXT "/test.txt"
@@ -458,7 +458,7 @@ void test10 (const char* req, const char* req_decrypt)
 	sprintf(API_KEY, "0000-0000-0000");
 
 	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
-	sprintf(recv_buf,TEST4_RECV_BUF, TEST_TXT_ENCR, req);
+	sprintf(recv_buf,TEST4_RECV_BUF, TEST_TXT_ENCR, strlen(req), req);
 
 
 	sprintf(SD_PREFIX, "%s", "./build");
@@ -493,7 +493,7 @@ void test11 (const char* req, const char* req_decrypt)
 
 
 	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
-	sprintf(recv_buf,TEST4_RECV_BUF, TEST_TXT_ENCR, req);
+	sprintf(recv_buf,TEST4_RECV_BUF, TEST_TXT_ENCR, strlen(req), req);
 
 
 	sprintf(SD_PREFIX, "%s", "./build");
