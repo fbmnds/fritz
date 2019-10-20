@@ -71,7 +71,7 @@ const static uint8_t unb64[]={
 // Converts binary data of length=len to base64 characters.
 // Length of the resultant string is stored in flen
 // (you must pass pointer flen).
-void base64( const void* binaryData, int len, unsigned char *res )
+int base64( const void* binaryData, int len, unsigned char *res )
 {
   const uint8_t* bin = (const uint8_t*) binaryData ;
   
@@ -108,9 +108,10 @@ void base64( const void* binaryData, int len, unsigned char *res )
   }
   
   res[rc]=0; // NULL TERMINATOR! ;)
+  return rc;
 }
 
-void unbase64( const unsigned char* ascii, int len, uint8_t *bin, int *bin_len)
+int unbase64( const unsigned char* ascii, int len, uint8_t *bin)
 {
   int cb=0;
   int charNo;
@@ -118,7 +119,7 @@ void unbase64( const unsigned char* ascii, int len, uint8_t *bin, int *bin_len)
 
   if( len < 2 ) { // 2 accesses below would be OOB.
     bin = NULL;
-    return;
+    return -1;
   }
   if( ascii[ len-1 ]=='=' )  ++pad ;
   if( ascii[ len-2 ]=='=' )  ++pad ;
@@ -152,8 +153,7 @@ void unbase64( const unsigned char* ascii, int len, uint8_t *bin, int *bin_len)
     bin[cb++] = (A<<2) | (B>>4) ;
   }
 
-  *bin_len = cb;
-  return;
+  return cb;
 }
 
 #endif

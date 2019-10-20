@@ -7,6 +7,8 @@
 
 #include "../main/secrets/base64.h"
 
+#define p_green(b, ...) printf("\n\033[1;32m");printf(b, ##__VA_ARGS__);printf("\033[1;0m")
+#define p_red(b, ...)   printf("\n\033[1;31m");printf(b, ##__VA_ARGS__);printf("\033[1;0m")
 
 void test1 (void)
 {
@@ -15,8 +17,8 @@ void test1 (void)
 	static const int cs_len = 36;
 	static const int buf_len = 72;
 	static       int b64_len = 72;
-	static char out[] = "'                                                                      '";
-	static char out2[] = "                                                                        ";
+	static char out[72];
+	static char out2[72];
 
 
 	int i;
@@ -24,18 +26,17 @@ void test1 (void)
 	for (i=0; i<buf_len; i++) out2[i]='\0';
 	printf("cs %s\n", cs);
 	printf("out %s\n", out);
-	base64((void *)cs, cs_len, out);
-	b64_len = strlen(out); 
+	b64_len = base64((void *)cs, cs_len, out); 
 	printf("base64 encoded cs %s, length %d\n", out, b64_len);
-	unbase64(out, b64_len, (uint8_t *)out2, &b64_len);
-	b64_len = strlen(out2); 
-	printf("base64 decoded encoded cs '%s', length %d\n", out2, b64_len);
-	for (i=0; i<buf_len; i++) printf ("%c", out2[i]);
-	printf("\n");
+	assert(!memcmp(cs_b64,out,b64_len));
 
-	assert(!memcmp(cs_b64,out,strlen(out)));
-	assert(!memcmp(cs,out2,strlen(out2)));
-	assert(cs_len == strlen(out2));
+	b64_len = unbase64(out, b64_len, (uint8_t *)out);
+	printf("base64 decoded encoded cs '%s', length %d\n", out, b64_len);
+	for (i=0; i<b64_len; i++) printf ("%c", out[i]); printf("\n");
+	assert(!memcmp(cs,out,b64_len));
+	//assert(cs_len == strlen(out));
+
+	p_green("test1 base64 encode/decode passed");
 }
 
 void test2 (void)
@@ -56,21 +57,20 @@ void test2 (void)
 	srand(time(&t));
 
 	for (k=0; k<k_max; k++) {
-		int i;
-		for (i=0; i<buf_len; i++) out[i]='\0';
-		for (i=0; i<buf_len; i++) out2[i]='\0';
+		memset(out, 0, buf_len);
+		memset(out2, 0, buf_len);
 
-		for (i=0; i<cs_len; i++) cs[i]=rand();
+		for (int i=0; i<cs_len; i++) cs[i]=rand();
 
-		base64((void *)cs, cs_len, out);
-		out_b64_len = strlen(out); 
+		out_b64_len = base64((void *)cs, cs_len, out); 
 		assert(out_b64_len<buf_len);
 
-		unbase64(out, out_b64_len, out2, &out2_b64_len);
+		out2_b64_len = unbase64(out, out_b64_len, out);
 
-		assert(!memcmp(cs,out2,out2_b64_len));
+		assert(!memcmp(cs,out,out2_b64_len));
 		assert(cs_len == out2_b64_len);
 	}
+	p_green("test2 base64 encode/decode passed\n");
 }
 
 void main (void)

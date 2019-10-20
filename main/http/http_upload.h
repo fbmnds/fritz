@@ -213,7 +213,7 @@ http_server_label_t post_put(int new_sockfd, char* recv_buf, int recv_buf_receiv
         default:   break;
     }
 
-    // decrypt payload
+    // base64 decode payload
     aes128_cbc_decrypt4(&recv_p, (u_str_pt *)&recv_p, &secret_upload_ctx, UPLOAD_IV);
 
     // write to file
