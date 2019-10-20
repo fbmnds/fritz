@@ -9,6 +9,7 @@
 #include "http_globals.h"
 
 static FILE* upload_file = NULL;
+static int upload_file_len = 0;
 
 static char UPLOAD_KEY[] = "____-____-____";
 static char UPLOAD_NONCE[]  = "____-____-____";
@@ -48,13 +49,32 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int recv_buf_rec
     if (recv_p.str) {
         ESP_LOGI(TAG, "decrypted %s", recv_p.str); 
     }
-    
+   
     api_key.str = API_KEY;
     api_key.len = API_KEY_LEN;
     if (validate_req_base(&recv_p, &api_key) < 0) {
         ESP_LOGE(TAG, "HTTP validation error: ignore request");
         ESP_LOGE(TAG, "%s", recv_buf);
         return _500;        
+    }
+
+    idx = 2*API_KEY_LEN+2;
+    if (recv_p.len < idx) {
+        ESP_LOGE(TAG, "HTTP upload file length validation error: ignore request");
+        return _500;      	
+    }
+    
+    upload_file_len = 0;
+    while (recv_p.str[idx] >= '0' && recv_p.str[idx] <= '9') {
+    	if (idx == 2*API_KEY_LEN+2) 
+    		upload_file_len = recv_p.str[idx] - '0';
+    	else 
+    		upload_file_len = 10*upload_file_len + recv_p.str[idx] - '0'; 
+    	idx++;
+    }
+    if (upload_file_len < 1) {
+        ESP_LOGE(TAG, "HTTP upload file length validation error: ignore request");
+        return _500;      	
     }
 
     // set UPLOAD_KEY
@@ -98,6 +118,7 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int recv_buf_rec
         ESP_LOGE(TAG, "Failed to open file for writing");
         return _500;
     }
+    upload_file = f;
     
     // generate IV
     if (strlen(UPLOAD_NONCE) != API_KEY_LEN) {
@@ -145,7 +166,7 @@ http_server_label_t post_upload(int new_sockfd, char* recv_buf, int recv_buf_rec
 
 http_server_label_t post_put(int new_sockfd, char* recv_buf, int recv_buf_received_len)
 {
-	str_pt recv_p, upload_key;
+	str_pt recv_p, upload_chk;
 	int idx, prefix_len;
 
     if (!upload_file) return _500;
@@ -166,16 +187,22 @@ http_server_label_t post_put(int new_sockfd, char* recv_buf, int recv_buf_receiv
         ESP_LOGI(TAG, "decrypted %s", recv_p.str); 
     }
     
-    upload_key.str = UPLOAD_KEY;
-    upload_key.len = API_KEY_LEN; // checked in post_upload
-    if (validate_req_base(&recv_p, &upload_key) < 0) {
+    upload_chk.str = UPLOAD_KEY;
+    upload_chk.len = API_KEY_LEN; // checked in post_upload
+    if (validate_req_base(&recv_p, &upload_chk) < 0) {
         ESP_LOGE(TAG, "HTTP validation error: ignore request");
         ESP_LOGE(TAG, "%s", recv_buf);
         return _500;        
     }
 
-    // register request?
-
+    // check UPLOAD_NONCE
+    upload_chk.str = UPLOAD_NONCE;
+    //upload_chk.len = API_KEY_LEN;
+    if(!cmp_str_head(recv_p.str, &upload_chk)) {
+        ESP_LOGE(TAG, "HTTP upload nonce validation error: ignore request");
+        ESP_LOGE(TAG, "%s", recv_buf);
+        return _500;    	
+    }
 
     // get payload position
     recv_p.str = NULL;
@@ -189,8 +216,19 @@ http_server_label_t post_put(int new_sockfd, char* recv_buf, int recv_buf_receiv
     aes128_cbc_decrypt4(&recv_p, (u_str_pt *)&recv_p, &secret_upload_ctx, UPLOAD_IV);
 
     // write to file
+    recv_p.str[recv_p.len] = '\0';
+    fputs(recv_p.str, upload_file);
     
     // close on end-of-transaction
+    assert(sizeof(char) == sizeof(unsigned char));
+    assert(sizeof(char) == 1);
+    upload_file_len -= recv_p.len;
+
+    if (upload_file_len == 0) {
+    	fclose(upload_file);
+    	upload_file = NULL;
+    	return _200;
+    }
 
     // generate IV
     if (strlen(UPLOAD_NONCE) != API_KEY_LEN) {

@@ -51,7 +51,7 @@ static char recv_buf[HTTP_RECV_BUF_LEN];
 
 static str_pt api_key    = { .str = API_KEY,    .len = API_KEY_LEN };
 static str_pt upload_key = { .str = UPLOAD_KEY, .len = API_KEY_LEN };
-
+extern FILE * upload_file;
 
 #define TEST_RECV_BUF_MAX_LEN 256
 #define TEST_RECV_BUF "POST /upload/test.txt HTTP/1.1\r\nContent-Length: 123\r\n\r\n0123456789abcdef\r\n"
@@ -377,44 +377,7 @@ void test8(const char* req, const char* req_decrypt,
 	p_green("test8: validate_req_base, register_req passed\n");
 }
 
-void test9 (const char* req, const char* req_decrypt)
-{
-	char recv_buf[HTTP_RECV_BUF_LEN];
-	str_pt recv_p;
-
-	http_server_label_t ret;
-
-
-	sprintf(API_KEY, "0000-0000-0001");
-
-	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
-	sprintf(recv_buf,TEST3_RECV_BUF, req);
-
-	ret = post_upload(0, recv_buf, strlen(recv_buf));
-	//for (int i=0; i<out2_len; i++) printf("%c", out2[i]); printf("\n");
-    
-	assert(ret == _500);
-
-	sprintf(API_KEY, "0000-0000-0000");
-
-	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
-	sprintf(recv_buf,TEST4_RECV_BUF, TEST_TXT_ENCR, req);
-
-
-	sprintf(SD_PREFIX, "%s", "./build");
-	assert(strlen(SD_PREFIX) <= SD_PREFIX_LEN);
-
-	ret = post_upload(0, recv_buf, strlen(recv_buf));
-	//for (int i=0; i<out2_len; i++) printf("%c", out2[i]); printf("\n");
-    
-	assert(ret == DONE);
-	for (int i=0; i<API_KEY_LEN; i++) assert(UPLOAD_KEY[i] == req_decrypt[i]);
-	//for (int i=0; i<API_KEY_LEN; i++) printf("%c", UPLOAD_KEY[i]); printf("\n");
-
-    p_green("test9: post_upload passed\n");	
-}
-
-void test10 ()
+void test9 ()
 {
 	char recv_buf[HTTP_RECV_BUF_LEN];
 	const char test[] = "262c6d8baa84549ac2a089d9825220a0";
@@ -471,8 +434,50 @@ void test10 ()
 //	for (int i=0; i<AES_KEY_SIZE; i++) printf("(uint8_t)recv_p.str[i] %02x u_test[i] %02x \n", (uint8_t)recv_p.str[i], u_test[i]);
     for (int i=0; i<recv_p.len; i++) assert(u_test[i] == (uint8_t)recv_p.str[i]);
 
-    p_green("test10: aes128_cbc_decrypt4 passed\n");	
+    p_green("test9: aes128_cbc_decrypt4 passed\n");	
 }
+
+void test10 (const char* req, const char* req_decrypt)
+{
+	char recv_buf[HTTP_RECV_BUF_LEN];
+	str_pt recv_p;
+
+	http_server_label_t ret;
+
+
+	sprintf(API_KEY, "0000-0000-0001");
+
+	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
+	sprintf(recv_buf,TEST3_RECV_BUF, req);
+
+	ret = post_upload(0, recv_buf, strlen(recv_buf));
+	//for (int i=0; i<out2_len; i++) printf("%c", out2[i]); printf("\n");
+    
+	assert(ret == _500);
+
+	sprintf(API_KEY, "0000-0000-0000");
+
+	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
+	sprintf(recv_buf,TEST4_RECV_BUF, TEST_TXT_ENCR, req);
+
+
+	sprintf(SD_PREFIX, "%s", "./build");
+	assert(strlen(SD_PREFIX) <= SD_PREFIX_LEN);
+
+	ret = post_upload(0, recv_buf, strlen(recv_buf));
+	//for (int i=0; i<out2_len; i++) printf("%c", out2[i]); printf("\n");
+    
+	assert(ret == DONE);
+	for (int i=0; i<API_KEY_LEN; i++) assert(UPLOAD_KEY[i] == req_decrypt[i]);
+	//for (int i=0; i<API_KEY_LEN; i++) printf("%c", UPLOAD_KEY[i]); printf("\n");
+
+	assert(upload_file_len == 1);
+	assert(upload_file);
+	fclose(upload_file);
+
+    p_green("test10: post_upload passed\n");	
+}
+
 
 int main(void)
 {
@@ -544,7 +549,7 @@ int main(void)
 		    assert(strlen(req_register) == (i%REGISTER_LEN+1)*REGISTER_ITEM_LEN);
 		}
 	}
-	test9(req_1, req_decrypt_1);
-	test10();
+	test9();
+	test10(req_1, req_decrypt_1);
 
 }
