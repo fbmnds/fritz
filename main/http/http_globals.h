@@ -273,4 +273,35 @@ http_server_label_t set_payload_idx2 (str_pt* str, char* recv_buf)
     return CONTINUE;
 }
 
+http_server_label_t set_payload_idx3 (str_pt* str, char* recv_buf)
+{
+    str->len = 0;
+    str->str = recv_buf + sizeof(char)*HTTP_RECV_BUF_LEN;
+
+    while (--(str->str) != recv_buf) {
+        //if (str->str[0] == '\r' || str->str[0] == '\n') str->str[0] = '\0';
+        if (str->str[0] != '\0' && str->str[0] != '\r' && str->str[0] != '\n') break;
+    }
+    //printf("%s", str->str);
+    while (str->str != recv_buf) {
+        //printf("%s", str->str);
+        if ((str->str[0] >= '0' && str->str[0] <= '9') || 
+            (str->str[0] >= 'a' && str->str[0] <= 'f') ||
+            (str->str[0] >= 'A' && str->str[0] <= 'Z') ||
+            str->str[0] == '+' || str->str[0] == '/') {
+            (str->str)--; 
+            (str->len)++;
+        } else 
+            break;
+    }
+    //printf("%d\n", str->len);
+    if (str->len) (str->str)++;
+    if (str->str == recv_buf) {
+        ESP_LOGE(TAG, "HTTP read: ignore request");
+        ESP_LOGE(TAG, "%s", recv_buf);        
+        return DONE;
+    }
+    return CONTINUE;
+}
+
 #endif

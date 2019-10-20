@@ -208,15 +208,17 @@ http_server_label_t post_put(int new_sockfd, char* recv_buf, int recv_buf_receiv
     // get payload position
     recv_p.str = NULL;
     recv_p.len = 0;
-    switch (set_payload_idx2 (&recv_p, recv_buf)) {
+    switch (set_payload_idx3 (&recv_p, recv_buf)) {
         case DONE: return _500;
         default:   break;
     }
 
     // base64 decode payload
-    aes128_cbc_decrypt4(&recv_p, (u_str_pt *)&recv_p, &secret_upload_ctx, UPLOAD_IV);
+    //aes128_cbc_decrypt4(&recv_p, (u_str_pt *)&recv_p, &secret_upload_ctx, UPLOAD_IV);
+    recv_p.len = unbase64((unsigned char *) recv_p.str, recv_p.len, (uint8_t *) recv_p.str);
 
     // write to file
+    assert(recv_p.len < HTTP_RECV_BUF_LEN);
     recv_p.str[recv_p.len] = '\0';
     fputs(recv_p.str, upload_file);
     
