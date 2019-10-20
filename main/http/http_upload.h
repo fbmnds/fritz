@@ -7,6 +7,7 @@
 
 
 #include "http_globals.h"
+#include "../secrets/base64.h"
 
 static FILE* upload_file = NULL;
 static int upload_file_len = 0;
