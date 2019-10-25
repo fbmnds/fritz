@@ -90,8 +90,20 @@ extern FILE * upload_file;
 "Content-Length: %ld\r\n\r\n" \
 "%s"
 
-#define TEST_TXT "/test.txt"
+#define TEST5_RECV_BUF \
+"POST /put HTTP/1.1\r\n" \
+"Content-Length: "
+
+#define TEST5_RECV_BUF_LEN strlen(TEST5_RECV_BUF)
+
+#define TEST5_RECV_BUF_DECRYPT \
+"POST /put HTTP/1.1\r\n" \
+"Content-Length: %ld\r\n\r\n" \
+"%s\r\n"
+
+#define TEST_TXT      "/test.txt"
 #define TEST_TXT_ENCR "dfd13cfc897eb9d35480179b3876cda5"
+#define TEST_TXT_B64  "L3Rlc3QudHh0Cg=="
 
 void test1(void)
 {
@@ -437,7 +449,7 @@ void test9 ()
     p_green("test9: aes128_cbc_decrypt4 passed\n");	
 }
 
-void test10 (const char* req, const char* req_decrypt)
+void test10 (const char* req, const char* req_decrypt, int len)
 {
 	char recv_buf[HTTP_RECV_BUF_LEN];
 	str_pt recv_p;
@@ -471,46 +483,71 @@ void test10 (const char* req, const char* req_decrypt)
 	for (int i=0; i<API_KEY_LEN; i++) assert(UPLOAD_KEY[i] == req_decrypt[i]);
 	//for (int i=0; i<API_KEY_LEN; i++) printf("%c", UPLOAD_KEY[i]); printf("\n");
 
-	assert(upload_file_len == 1);
-	assert(upload_file);
-	fclose(upload_file);
+	assert(UPLOAD_FILE_LEN == len);
+	assert(UPLOAD_FILE);
+	fclose(UPLOAD_FILE);
 
     p_green("test10: post_upload passed\n");	
 }
 
 
-void test11 (const char* req, const char* req_decrypt)
+void test11 ()
 {
 	char recv_buf[HTTP_RECV_BUF_LEN];
-	str_pt recv_p;
+	char filename[260];
+	int idx, payload_len;
 
 	http_server_label_t ret;
 
 	sprintf(API_KEY,      "0000-0000-0000");
 	sprintf(UPLOAD_KEY,   "1000-0000-0000");
 	sprintf(UPLOAD_NONCE, "3000-0000-0000");
-
-
+	UPLOAD_FILE_LEN = strlen(TEST_TXT) + 1; // '\0'
 
 	memset(recv_buf, 0, HTTP_RECV_BUF_LEN);
-	sprintf(recv_buf,TEST4_RECV_BUF, TEST_TXT_ENCR, strlen(req), req);
+	for (int i=0; i<TEST5_RECV_BUF_LEN; i++) recv_buf[i] = TEST5_RECV_BUF[i];
 
+	payload_len = 2*API_KEY_LEN + 2 + strlen(TEST_TXT_B64);
+	payload_len = 2*(payload_len + AES_KEY_SIZE - payload_len%AES_KEY_SIZE);
+	assert(payload_len == 96);
+
+	idx = TEST5_RECV_BUF_LEN;
+	printf("idx = TEST5_RECV_BUF_LEN %d\n", idx);
+
+	assert(payload_len < 100000);
+	if (payload_len > 9999) recv_buf[idx++] = '0' + payload_len/10000;
+	if (payload_len > 999)  recv_buf[idx++] = '0' + (payload_len%10000)/1000;
+	if (payload_len > 99)   recv_buf[idx++] = '0' + (payload_len%1000)/100;
+	if (payload_len > 9)    recv_buf[idx++] = '0' + (payload_len%100)/10;
+	recv_buf[idx++] = '0' + (payload_len%10);
+    
+    recv_buf[idx++] = '\r'; recv_buf[idx++] = '\n';
+    recv_buf[idx++] = '\r'; recv_buf[idx++] = '\n';
+
+    // 3000-0000-0000;1000-0000-0000;L3Rlc3QudHh0Cg==
+	// 1ba8e386deb9d0a6d8dc1fa3e833ffd57b0e2bc1092b0e0d11a43d5602df6afceb0e8968e04b456a3e90b94304f24398	
+
+    printf("idx %d = HTTP_RECV_BUF_LEN %d - payload_len %d\n", idx, HTTP_RECV_BUF_LEN, payload_len);
+	sprintf(&recv_buf[idx], "%s;%s;%s\r\n", UPLOAD_NONCE, UPLOAD_KEY, TEST_TXT_B64);
+
+	aes128_cbc_encrypt(&recv_buf[idx], payload_len/2, &recv_buf[idx], &payload_len, &secret_ctx, UPLOAD_IV);
+	printf("&recv_buf[idx] '%s'\n", &recv_buf[idx]);
+	printf("recv_buf \n'%s'\n", recv_buf);
 
 	sprintf(SD_PREFIX, "%s", "./build");
 	assert(strlen(SD_PREFIX) <= SD_PREFIX_LEN);
+	sprintf(filename, "%s/%s", SD_PREFIX, TEST_TXT);
+    UPLOAD_FILE = fopen(filename, "wb");
+    assert(UPLOAD_FILE != NULL);	
 
-	ret = post_upload(0, recv_buf, strlen(recv_buf));
-	//for (int i=0; i<out2_len; i++) printf("%c", out2[i]); printf("\n");
-    
-	assert(ret == DONE);
-	for (int i=0; i<API_KEY_LEN; i++) assert(UPLOAD_KEY[i] == req_decrypt[i]);
-	//for (int i=0; i<API_KEY_LEN; i++) printf("%c", UPLOAD_KEY[i]); printf("\n");
+	ret = post_put(0, recv_buf, strlen(recv_buf));
+    assert(ret == _200);
 
-	assert(upload_file_len == 1);
-	assert(upload_file);
-	fclose(upload_file);
+	assert(UPLOAD_FILE_LEN == 0);
+	assert(UPLOAD_FILE == NULL);
 	
-    p_green("test11: post_put passed\n");	
+    p_green("test11: post_put, unbase64, set_payload_idx2, set_payload_idx3 passed\n");	
+/**/
 }
 
 int main(void)
@@ -584,6 +621,6 @@ int main(void)
 		}
 	}
 	test9();
-	test10(req_1, req_decrypt_1);
-
+	test10(req_1, req_decrypt_1, 1);
+	test11();
 }

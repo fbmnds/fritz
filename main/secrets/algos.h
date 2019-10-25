@@ -41,7 +41,8 @@ static void esp_fill_random(char *s, int len)
 static char cs[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 static int cs_len = 36;
 
-static void set_api_key() {
+static void set_api_key() 
+{
     unsigned char buf[API_KEY_LEN_m2];
 
     for (int i=0; i<API_KEY_LEN; i++) API_KEY_PREV[i] = API_KEY[i];  // TODO critical section
@@ -68,7 +69,8 @@ typedef struct u_str_p {
     int  len;
 } u_str_pt;
 
-static void set_nonce(char* s) {
+static void set_nonce(char* s) 
+{
     unsigned char buf[API_KEY_LEN_m2];
 #ifdef GCC_X86
     esp_fill_random(buf, (int)API_KEY_LEN_m2);
@@ -104,8 +106,7 @@ void aes128_cbc_encrypt(const char*      in,
                         const esp_aes_context* secret_ctx,
                         const unsigned char*   iv)
 {
-	int ret, mod_key_size;
-	size_t in_len2;
+	int ret;
 #ifdef GCC_X86
     AES_KEY enc_key;
 #endif
@@ -113,23 +114,13 @@ void aes128_cbc_encrypt(const char*      in,
 
     for (int i = 0; i < AES_KEY_SIZE; i++) secret_iv[i] = iv[i];
 
-#ifdef TEST
     assert(in_len % AES_KEY_SIZE == 0);
-    in_len2 = (size_t) in_len;
-#else
-	mod_key_size = in_len % AES_KEY_SIZE;
-	if (mod_key_size) 
-		in_len2 = (size_t) (in_len + AES_KEY_SIZE - mod_key_size);
-	else
-		in_len2 = (size_t) in_len;
-	ESP_LOGI("secret", "aes128_cbc_encrypt in_len2 = %d\n%s\n", in_len2, in);
-#endif /* TEST */
 
     for (int i = 0; i < AES_KEY_SIZE; i++) secret_iv[i] = iv[i];
 
 	bzero(aes_hex_in, sizeof(aes_hex_in));
 	for (int i=0; i<in_len; i++) aes_hex_in[i] = (unsigned char) in[i];
-	//for (int i=in_len; i<in_len2; i++) aes_hex_in[i] = (unsigned char) ' ';
+	//for (int i=in_len; i<in_len; i++) aes_hex_in[i] = (unsigned char) ' ';
 
     bzero(aes_hex_out, sizeof(aes_hex_out));
 	memset(out2, 0, *out2_len);
@@ -140,7 +131,7 @@ void aes128_cbc_encrypt(const char*      in,
 #else
 	ret = esp_aes_crypt_cbc((esp_aes_context*) secret_ctx,        // AES context
                             ESP_AES_ENCRYPT,   // AES_ENCRYPT or AES_DECRYPT
-                            in_len2,           // length of the input data
+                            (size_t) in_len,   // length of the input data
                             secret_iv,         // initialization vector (updated after use)       
                             aes_hex_in,        // buffer holding the input data
                             aes_hex_out);      // buffer holding the output data
@@ -153,10 +144,10 @@ void aes128_cbc_encrypt(const char*      in,
 
     }
 #endif /* GCC_X86 */
-	for (size_t i=0; i<in_len2; i++) {
+	for (size_t i=0; i<in_len; i++) {
 		sprintf(out2+i*2, "%02x", aes_hex_out[i]);
 	} 
-    *out2_len = 2*in_len2;
+    *out2_len = 2*in_len;
 }
 
 int8_t ctoi (char c)
